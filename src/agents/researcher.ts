@@ -10,6 +10,20 @@ import { RESEARCHER_TOOLS } from '../llm/tools';
 import { preferenceEngine } from '../memory/preferences';
 import { extractDomain } from '../shared/utils';
 
+// ─── Timeout Helper ──────────────────────────────────────────────────────────
+
+const FETCH_TIMEOUT_MS = 30_000; // 30 seconds max per external fetch
+
+function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number = FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 // ─── Tabstack Client (lazy-initialized) ──────────────────────────────────────
 
 let tabstackClient: any = null;
@@ -91,7 +105,7 @@ export class ResearcherAgent extends BaseAgent {
       async () => {
         // Use Tabstack if available, otherwise fallback to fetch
         if (this.tabstackApiKey) {
-          const response = await fetch('https://api.tabstack.ai/v1/extract/markdown', {
+          const response = await fetchWithTimeout('https://api.tabstack.ai/v1/extract/markdown', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -102,8 +116,8 @@ export class ResearcherAgent extends BaseAgent {
           if (response.ok) return response.json();
           throw new Error(`Tabstack error: ${response.status}`);
         }
-        // Fallback: basic fetch
-        const response = await fetch(url);
+        // Fallback: basic fetch (with timeout)
+        const response = await fetchWithTimeout(url, {});
         return { content: await response.text(), url };
       },
     );
@@ -133,7 +147,7 @@ export class ResearcherAgent extends BaseAgent {
       `Extract structured data from ${url}`,
       async () => {
         if (this.tabstackApiKey) {
-          const response = await fetch('https://api.tabstack.ai/v1/extract/json', {
+          const response = await fetchWithTimeout('https://api.tabstack.ai/v1/extract/json', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -179,7 +193,7 @@ export class ResearcherAgent extends BaseAgent {
           throw new Error('Tabstack API key required for automation');
         }
 
-        const response = await fetch('https://api.tabstack.ai/v1/automate', {
+        const response = await fetchWithTimeout('https://api.tabstack.ai/v1/automate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -191,7 +205,7 @@ export class ResearcherAgent extends BaseAgent {
             guardrails,
             maxIterations: 50,
           }),
-        });
+        }, 90_000); // 90s for automation tasks (they take longer)
 
         if (!response.ok) {
           throw new Error(`Tabstack automate error: ${response.status}`);

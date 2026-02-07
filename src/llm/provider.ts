@@ -1,5 +1,19 @@
 import { DEFAULT_LLM_CONFIG } from '../shared/constants';
 
+// ─── Timeout Helper ──────────────────────────────────────────────────────────
+
+const LLM_TIMEOUT_MS = 60_000; // 60 seconds max per LLM call
+
+function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number = LLM_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 // ─── LLM Provider Types ──────────────────────────────────────────────────────
 
 export type LLMProvider = 'openai' | 'anthropic' | 'ollama';
@@ -140,7 +154,7 @@ class LLMProviderService {
       body.response_format = { type: 'json_object' };
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -211,7 +225,7 @@ class LLMProviderService {
       }));
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -332,7 +346,7 @@ class LLMProviderService {
       headers['Authorization'] = `Bearer ${this.config!.apiKey}`;
     }
 
-    const response = await fetch(`${baseUrl}/api/chat`, {
+    const response = await fetchWithTimeout(`${baseUrl}/api/chat`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),

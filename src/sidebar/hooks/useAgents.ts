@@ -122,5 +122,14 @@ export function useChat() {
     sendToBackground(ExtMessageType.USER_INPUT, { text, attachments });
   }, []);
 
+  // Safety: if isProcessing stays true for > 3 minutes, something hung — reset it
+  useEffect(() => {
+    if (!isProcessing) return;
+    const safetyTimer = setTimeout(() => {
+      setIsProcessing(false);
+    }, 3 * 60 * 1000);
+    return () => clearTimeout(safetyTimer);
+  }, [isProcessing]);
+
   return { messages, isProcessing, sendMessage };
 }

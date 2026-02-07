@@ -19,6 +19,16 @@ import { mcpRegistry } from '../mcp/registry';
 import { type PermissionEscalation } from '../permissions/types';
 import type { AgentActivity, Workflow } from '../agents/types';
 import { generateId } from '../shared/utils';
+import { MAX_WORKFLOW_DURATION } from '../shared/constants';
+
+// ─── Timeout Helper ──────────────────────────────────────────────────────────
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
 
 // ─── Message Router ───────────────────────────────────────────────────────────
 // Routes messages between sidebar UI, background agents, and content scripts.
@@ -171,12 +181,23 @@ class MessageRouter {
         // ── BostonAi.io: Auto-capture page context ─────────────────────
         const pageContext = await this.captureCurrentPage();
 
-        // Process with orchestrator (inject page context)
-        const response = await orchestrator.processUserInput(
-          payload.text,
-          payload.attachments,
-          pageContext,
-        );
+        // Process with orchestrator (inject page context) — with safety timeout
+        const timeoutMsg = 'That took too long — the request timed out. Try again or simplify the query.';
+        let response: string;
+        try {
+          response = await withTimeout(
+            orchestrator.processUserInput(payload.text, payload.attachments, pageContext),
+            MAX_WORKFLOW_DURATION,
+            timeoutMsg,
+          );
+          // If the timeout fired, force-cancel any lingering workflow
+          if (response === timeoutMsg) {
+            orchestrator.cancelWorkflow();
+          }
+        } catch (err) {
+          response = `Something went wrong: ${err instanceof Error ? err.message : String(err)}`;
+          orchestrator.cancelWorkflow();
+        }
 
         // Don't add "workflow in progress" rejections to chat as assistant messages
         if (response === 'A workflow is already in progress. Please wait or cancel it first.') {
