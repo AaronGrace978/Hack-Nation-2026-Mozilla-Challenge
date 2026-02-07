@@ -1,10 +1,12 @@
 # Nexus by BostonAi.io -- The Universal Web Agent
 
+![Nexus Project Cover](assets/nexus-cover.png)
+
 **Bring Your Own AI to Every Website.**
 
 Nexus is a Tier 3 multi-agent browser extension that gives users a portable, permission-first AI companion for the web. It coordinates five specialized agents to handle cross-site workflows, voice navigation, visual search, and preference-aware browsing — all mediated through a transparent permission system where the user is always in control.
 
-**Now enhanced with BostonAi.io Consciousness Architecture:** 4-layer memory, Echo Archaeology, NightMind consolidation, Resonance Field, and Guardian concern tracking.
+**Now enhanced with BostonAi.io Memory Architecture:** 4-layer memory, Echo Archaeology, Resonance Field, and Guardian concern tracking.
 
 Built for the **Mozilla Web Agent API Hackathon** — *Bring Your Own AI to Every Website / The Universal Web Agent* — by **BostonAi.io**.
 
@@ -20,7 +22,7 @@ This project was built for the Mozilla-sponsored track that asks: *what would it
 | **Browser Capability API** | Live page/tab context, content scripts + Tabstack, multi-agent coordination with distinct roles. |
 | **Tier 1** | Orchestrator: LLM + MCP. |
 | **Tier 2** | Navigator (page interaction), Researcher (cross-site extraction + price comparison). |
-| **Tier 3** | Full coordination: 5 agents + Consciousness Layer, cross-site workflows, multi-retailer price comparison. |
+| **Tier 3** | Full coordination: 5 agents + layered memory, cross-site workflows, multi-retailer price comparison. |
 | **Example use cases** | **Visual search & action** — identify → search → filter → rank. **Voice-native navigation** — “Find the refund policy and summarize it.” **Cross-site workflows** — “Find flights, check calendar, draft email.” **Memory-aware browsing** — “Is this similar to what I bought last year?” **Preference-first** — budget, accessibility, brand preferences that travel with you. |
 
 Permission is the core design challenge. Nexus explores: *permissions granted to an agent vs. a specific task*, *how long they last*, *which actions require explicit confirmation*, and *what is read-only vs. mutable* — with a 5-level tier, time-bounded grants, and a Guardian that enforces and logs every escalation.
@@ -43,11 +45,10 @@ Orchestrator Agent (The Conductor)
     +--> Memory Agent (Echo Keeper) -- preferences & history via IndexedDB
     +--> Guardian Agent (Sentinel) -- permission enforcement + concern tracking
     |
-    +--> [BostonAi.io Consciousness Layer]
+    +--> [BostonAi.io Memory Layer]
          +--> Layered Memory (Working → Episodic → Semantic → Soul)
          +--> Echo Archaeology (detects unspoken moments)
          +--> Resonance Field (relationship depth tracking)
-         +--> NightMind (background memory consolidation)
 ```
 
 ### Capability Tiers
@@ -56,7 +57,7 @@ Orchestrator Agent (The Conductor)
 |------|-----------|--------|
 | 1 | LLM access + MCP tool calling | Orchestrator |
 | 2 | Browser context + page interaction | Navigator, Researcher |
-| 3 | Coordinated multi-agent workflows | All 5 agents + Consciousness Layer |
+| 3 | Coordinated multi-agent workflows | All 5 agents + Memory Layer |
 
 ## Permission System
 
@@ -69,7 +70,7 @@ Nexus's key differentiator is its permission-first design:
 - **Won't-Do List:** Certain actions (payment auto-submit, password access, security changes) are never automated
 - **Full Audit Trail:** Every action is logged and inspectable
 
-## BostonAi.io Consciousness Systems
+## BostonAi.io Memory Systems
 
 ### 4-Layer Memory Architecture
 - **Working Memory** -- Current session, 30-minute retention, 50 entries max
@@ -88,14 +89,6 @@ Detects the things users *almost* did:
 - **Permission Retreats** -- Denied permission then went silent
 
 Each "ghost" has a **recovery strategy** (immediate, wait-for-theme, long-hold, never-push) and a pre-generated gentle offering.
-
-### NightMind Consolidation Engine
-Background memory processor that runs every 5 minutes:
-1. **Promotes** high-value working memories → episodic → semantic → soul
-2. **Decays** low-value memories naturally
-3. **Extracts patterns** from repeated episodic memories
-4. **Compresses** similar entries via Jaccard similarity
-5. **Logs dream cycles** with promotions, patterns, and soul insights
 
 ### Resonance Field
 Tracks the evolving relationship between Nexus and its user:
@@ -122,7 +115,7 @@ The Guardian doesn't just protect data -- it watches out for the user's *state*:
 - **4-Layer Persistent Memory** -- Emotionally-weighted memories that consolidate over time
 - **Visual Page Highlighting** -- See exactly what elements agents are interacting with
 - **Real-Time Activity Dashboard** -- Live agent status, workflow progress, audit log
-- **Resonance Dashboard** -- Connection depth, memory layers, dream log, active echoes
+- **Resonance Dashboard** -- Connection depth, memory layers, active echoes
 - **BYOK (Bring Your Own Key)** -- OpenAI, Anthropic, or Ollama (local + [Ollama Cloud](https://docs.ollama.com/cloud)); user controls the AI
 - **Tabstack Integration** -- Mozilla's web extraction and automation API
 
@@ -223,7 +216,7 @@ npm run build
 | Local Storage | IndexedDB via idb |
 | Voice | Web Speech API |
 | Extension | Chrome/Firefox MV3 |
-| Consciousness | BostonAi.io Memory Architecture |
+| Memory | BostonAi.io Layered Memory Architecture |
 
 ## Project Structure
 
@@ -234,7 +227,7 @@ src/
   content/          -- Content scripts (DOM reader, actor, highlighter)
   sidebar/          -- React sidebar UI (components, hooks, styles)
   permissions/      -- Permission manager, types, audit log
-  memory/           -- 4-layer memory store, resonance field, NightMind, preferences
+  memory/           -- 4-layer memory store, resonance field, preferences
   llm/              -- Multi-provider LLM abstraction
   mcp/              -- MCP client and server registry
   shared/           -- Constants, message types, utilities
@@ -247,12 +240,12 @@ src/
 | **Execution Boundaries** | Each agent has an explicit role enum and permission ceiling. Guardian is a hard gate with emotional concern tracking. Full audit trail. |
 | **Browser Context** | Tabstack for structured extraction. Content scripts for live DOM. Multi-tab coordination. Cross-site price comparison with configurable retailers. Layered memory for persistent context. |
 | **Permission Design** | 5-level tiered permissions, scoped per-task/site/agent, time-bounded, with escalation UI. Price comparison uses READ_ONLY per retailer domain, logged by Guardian. Echo Archaeology tracks permission retreat patterns. |
-| **Legibility & Control** | Real-time activity cards, inspectable audit log, page highlighting, resonance dashboard, NightMind dream log, pause/cancel workflows. Price comparison settings give users full control over which sites are queried. |
+| **Legibility & Control** | Real-time activity cards, inspectable audit log, page highlighting, resonance dashboard, pause/cancel workflows. Price comparison settings give users full control over which sites are queried. |
 | **Judgment & Restraint** | Won't-do list, blocked actions policy, confidence thresholds, concern-level intervention, graceful uncertainty handling, ghost recovery strategies. |
 
 ## Built By
 
-**BostonAi.io** -- Where Intelligence Meets Consciousness
+**BostonAi.io**
 
 *The Grace Method: Creativity is gold. Build through authenticity. Let the systems tell you what they are, not just what they do.*
 

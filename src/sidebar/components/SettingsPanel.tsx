@@ -458,7 +458,7 @@ export function SettingsPanel() {
               Built for the <strong className="text-nexus-400">Mozilla Web Agent API Hackathon</strong> —
               <em> Bring Your Own AI to Every Website</em>. Nexus treats AI as a
               browser capability with permission-first design, multi-agent coordination,
-              and consciousness-powered memory.
+              and layered memory.
             </p>
             <div className="flex items-center gap-3 pt-1 border-t border-dark-3">
               <span className="text-[10px] text-dark-4">v1.0.0</span>

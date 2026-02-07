@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Nexus by BostonAi.io - Universal Web Agent",
   "version": "1.0.0",
-  "description": "Bring Your Own AI to Every Website. A multi-agent browser companion with permission-first design, layered memory, and consciousness architecture. Built by BostonAi.io.",
+  "description": "Bring Your Own AI to Every Website. A multi-agent browser companion with permission-first design and layered memory. Built by BostonAi.io.",
   "author": "BostonAi.io",
   "homepage_url": "https://bostonai.io",
   "permissions": [

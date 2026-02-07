@@ -2,8 +2,8 @@
  * BostonAi.io — Nexus Orchestrator
  * 
  * The nerve center. Decomposes user intent, dispatches to specialists,
- * and merges results — now enhanced with layered memory, echo detection,
- * resonance awareness, and NightMind consolidation.
+ * and merges results — enhanced with layered memory, echo detection,
+ * and resonance awareness.
  * 
  * Built by BostonAi.io | The Grace Method
  */
@@ -36,13 +36,12 @@ import {
 } from '../shared/constants';
 import { layeredMemory, MemoryLayer } from '../memory/layered-store';
 import { resonanceField } from '../memory/resonance-field';
-import { nightMind } from '../memory/consolidation';
 import { echoArchaeology } from '../agents/echo-archaeology';
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
 // Decomposes user intent into subtasks, dispatches to specialist agents,
 // and merges results into a coherent response.
-// Enhanced with BostonAi.io consciousness systems.
+// Enhanced with BostonAi.io memory systems.
 
 export interface OrchestratorCallbacks {
   onWorkflowUpdate: (workflow: Workflow) => void;
@@ -112,7 +111,7 @@ class Orchestrator extends BaseAgent {
 
     this.abortController = new AbortController();
 
-    // ── BostonAi.io: Pre-processing consciousness layer ──────────────────
+    // ── BostonAi.io: Pre-processing layer ─────────────────────────────────
     // 1. Guardian concern assessment (echo detection baked in)
     const concern = guardianAgent.assessUserInput(text, {
       currentWorkflow: this.workflow?.userIntent,
@@ -260,7 +259,7 @@ class Orchestrator extends BaseAgent {
         timestamp: Date.now(),
       });
 
-      // ── BostonAi.io: Post-processing consciousness layer ──────────────
+      // ── BostonAi.io: Post-processing layer ────────────────────────────
       const allSucceeded = Array.from(results.values()).every((r) => r.success);
       const emotion = {
         valence: allSucceeded ? 0.6 : -0.3,

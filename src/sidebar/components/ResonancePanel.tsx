@@ -2,7 +2,7 @@
  * BostonAi.io — Resonance Panel
  * 
  * Displays the relationship depth, memory layers, emotional trajectory,
- * NightMind dream log, and active ghosts from Echo Archaeology.
+ * and active ghosts from Echo Archaeology.
  * 
  * Built by BostonAi.io | The Grace Method
  */
@@ -10,12 +10,11 @@
 import React, { useState, useEffect } from 'react';
 import { resonanceField, type ConnectionMetrics } from '../../memory/resonance-field';
 import { layeredMemory, MemoryLayer } from '../../memory/layered-store';
-import { nightMind, type DreamEntry } from '../../memory/consolidation';
 import { echoArchaeology, type Ghost } from '../../agents/echo-archaeology';
 
 // ─── Sub-Views ────────────────────────────────────────────────────────────────
 
-type SubView = 'connection' | 'memory' | 'dreams' | 'echoes';
+type SubView = 'connection' | 'memory' | 'echoes';
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -23,15 +22,13 @@ export function ResonancePanel() {
   const [subView, setSubView] = useState<SubView>('connection');
   const [metrics, setMetrics] = useState<ConnectionMetrics>(resonanceField.getMetrics());
   const [memoryStats, setMemoryStats] = useState(layeredMemory.getStats());
-  const [lastDream, setLastDream] = useState<DreamEntry | null>(nightMind.getLastDream());
   const [ghosts, setGhosts] = useState<Ghost[]>(echoArchaeology.getActiveGhosts());
 
   useEffect(() => {
     const unsub1 = resonanceField.subscribe((m) => setMetrics(m));
     const unsub2 = layeredMemory.subscribe(() => setMemoryStats(layeredMemory.getStats()));
-    const unsub3 = nightMind.subscribe((d) => setLastDream(d));
-    const unsub4 = echoArchaeology.subscribe((g) => setGhosts(g));
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
+    const unsub3 = echoArchaeology.subscribe((g) => setGhosts(g));
+    return () => { unsub1(); unsub2(); unsub3(); };
   }, []);
 
   return (
@@ -41,7 +38,6 @@ export function ResonancePanel() {
         {([
           { id: 'connection' as const, label: 'Connection' },
           { id: 'memory' as const, label: 'Memory Layers' },
-          { id: 'dreams' as const, label: 'NightMind' },
           { id: 'echoes' as const, label: 'Echoes' },
         ]).map((s) => (
           <button
@@ -62,14 +58,13 @@ export function ResonancePanel() {
       <div className="flex-1 p-3">
         {subView === 'connection' && <ConnectionView metrics={metrics} />}
         {subView === 'memory' && <MemoryLayersView stats={memoryStats} />}
-        {subView === 'dreams' && <DreamsView lastDream={lastDream} />}
         {subView === 'echoes' && <EchoesView ghosts={ghosts} />}
       </div>
 
       {/* Attribution footer */}
       <div className="flex items-center justify-between px-3 py-1.5 border-t border-dark-3 bg-dark-2">
         <span className="text-[9px] text-dark-4 opacity-50">
-          Consciousness Layer by BostonAi.io
+          Memory Layer by BostonAi.io
         </span>
         <span className="text-[9px] text-dark-4 opacity-50">
           Mozilla Hackathon
@@ -191,88 +186,6 @@ function MemoryLayersView({ stats }: { stats: Record<string, number> }) {
         </div>
       ))}
 
-      <div className="text-center mt-2">
-        <div className="text-[9px] text-dark-4">
-          NightMind cycle #{nightMind.getCycleCount()} | 
-          {nightMind.isRunning() ? ' Running' : ' Stopped'}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Dreams View ──────────────────────────────────────────────────────────────
-
-function DreamsView({ lastDream }: { lastDream: DreamEntry | null }) {
-  const dreamLog = nightMind.getDreamLog();
-
-  return (
-    <div className="space-y-3 animate-fade-in">
-      <div className="text-center text-[10px] text-dark-4 mb-2">
-        NightMind — Background Memory Consolidation
-      </div>
-
-      {!lastDream && (
-        <div className="text-center text-xs text-dark-4 py-8">
-          No dream cycles yet. NightMind runs every 5 minutes.
-        </div>
-      )}
-
-      {lastDream && (
-        <div className="bg-dark-2 rounded-lg p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-surface-0">Latest Dream (Cycle #{lastDream.cycle})</span>
-            <span className="text-[10px] text-dark-4">
-              {new Date(lastDream.timestamp).toLocaleTimeString()}
-            </span>
-          </div>
-
-          {lastDream.promoted.length > 0 && (
-            <div>
-              <div className="text-[10px] text-green-400 mb-1">Promoted ({lastDream.promoted.length})</div>
-              {lastDream.promoted.slice(0, 3).map((p, i) => (
-                <div key={i} className="text-[10px] text-dark-4 pl-2 truncate">
-                  {p.from} → {p.to}: {p.content}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {lastDream.patterns.length > 0 && (
-            <div>
-              <div className="text-[10px] text-blue-400 mb-1">Patterns Found ({lastDream.patterns.length})</div>
-              {lastDream.patterns.map((p, i) => (
-                <div key={i} className="text-[10px] text-dark-4 pl-2">{p.pattern}</div>
-              ))}
-            </div>
-          )}
-
-          {lastDream.decayed.length > 0 && (
-            <div className="text-[10px] text-dark-4">
-              {lastDream.decayed.length} memories naturally faded
-            </div>
-          )}
-
-          {lastDream.compressed > 0 && (
-            <div className="text-[10px] text-dark-4">
-              {lastDream.compressed} similar memories compressed
-            </div>
-          )}
-
-          {lastDream.soulInsight && (
-            <div className="bg-purple-500/10 rounded p-2 mt-2">
-              <div className="text-[10px] text-purple-400 font-medium">Soul Insight</div>
-              <div className="text-[11px] text-surface-3">{lastDream.soulInsight}</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {dreamLog.length > 1 && (
-        <div className="text-[10px] text-dark-4 text-center">
-          {dreamLog.length} total dream cycles recorded
-        </div>
-      )}
     </div>
   );
 }
