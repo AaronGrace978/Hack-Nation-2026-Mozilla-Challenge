@@ -27,7 +27,13 @@ import { llmProvider, type LLMMessage, type LLMContentPart } from '../llm/provid
 import { preferenceEngine } from '../memory/preferences';
 import { memoryStore } from '../memory/store';
 import { generateId, extractDomain } from '../shared/utils';
-import { CONFIDENCE_THRESHOLD, MAX_WORKFLOW_DURATION } from '../shared/constants';
+import {
+  CONFIDENCE_THRESHOLD,
+  MAX_WORKFLOW_DURATION,
+  DEFAULT_COMPARISON_SITES,
+  DEFAULT_PRICE_COMPARISON_CONFIG,
+  type ComparisonSite,
+} from '../shared/constants';
 import { layeredMemory, MemoryLayer } from '../memory/layered-store';
 import { resonanceField } from '../memory/resonance-field';
 import { nightMind } from '../memory/consolidation';
@@ -146,13 +152,35 @@ class Orchestrator extends BaseAgent {
     this.notifyWorkflow();
 
     try {
+      // ── BostonAi.io: Proactive price comparison offer ───────────────────
+      const autoCompare = await memoryStore.getSetting<boolean>('price_comparison_auto_compare', DEFAULT_PRICE_COMPARISON_CONFIG.autoCompare);
+      const priceCompOn = await memoryStore.getSetting<boolean>('price_comparison_enabled', DEFAULT_PRICE_COMPARISON_CONFIG.enabled);
+      const hasPageCtx = this.currentPageContext?.url && this.currentPageContext.url.startsWith('http');
+
+      if (autoCompare && priceCompOn && hasPageCtx) {
+        // Detect if the user is on a product page (simple heuristic on text + URL patterns)
+        const pageText = (this.currentPageContext?.text ?? '').toLowerCase();
+        const pageUrl = this.currentPageContext?.url ?? '';
+        const looksLikeProductPage =
+          (/\/(dp|product|item|p)\//i.test(pageUrl) || /add.to.cart|buy.now|in.stock/i.test(pageText)) &&
+          /\$[\d,.]+|\bprice\b/i.test(pageText);
+
+        if (looksLikeProductPage && !/compare|cheapest|price check/i.test(text)) {
+          this.callbacks?.onChatMessage({
+            role: 'agent',
+            content: `I notice you're viewing a product page. Would you like me to **compare prices** across your enabled sites? Just say "compare prices" or "find it cheaper".`,
+            agentRole: 'researcher',
+          });
+        }
+      }
+
       // ── BostonAi.io: Fast path for simple single-page questions ────────
       // If the user asks about "this page/site" and we have page context (even just URL),
       // skip decomposition and answer directly from page context.
       const hasPageContext = this.currentPageContext?.url && this.currentPageContext.url.startsWith('http');
       const isSimplePageQuestion = hasPageContext &&
         /\b(this (page|site|website)|summar|refund|policy|price|shipping|contact|about)\b/i.test(text) &&
-        !/\b(compare|across|multiple|different sites|vs)\b/i.test(text);
+        !/\b(compare|across|multiple|different sites|vs|cheaper|cheapest|price check)\b/i.test(text);
 
       if (isSimplePageQuestion && hasPageContext) {
         this.reportProgress('Reading the page...');
@@ -308,6 +336,21 @@ Domain: ${this.currentPageContext.domain}`;
 
     const userContent = `${text}${pageAwareness}`;
 
+    // ── BostonAi.io: Load price comparison settings for routing ──────────
+    const priceCompEnabled = await memoryStore.getSetting<boolean>('price_comparison_enabled', DEFAULT_PRICE_COMPARISON_CONFIG.enabled);
+    const comparisonSites = await memoryStore.getSetting<ComparisonSite[]>('price_comparison_sites', DEFAULT_COMPARISON_SITES);
+    const enabledSiteNames = comparisonSites.filter((s) => s.enabled).map((s) => s.name);
+
+    const priceCompBlock = priceCompEnabled
+      ? `\n\nPRICE COMPARISON MODE (ENABLED):
+The user has cross-site price comparison turned on. When the user asks to find, compare, or check prices for a product:
+- Use a SINGLE researcher subtask with action "compare_prices" and include "query" (the product search term).
+- Do NOT create separate subtasks per site — the compare_prices action handles multi-site extraction internally.
+- Enabled comparison sites: ${enabledSiteNames.join(', ')}
+- Example: { "action": "compare_prices", "query": "Sony WH-1000XM5 headphones" }`
+      : `\n\nPRICE COMPARISON MODE (DISABLED):
+For price comparisons, use the standard "compare" action with explicit URLs.`;
+
     // Use JSON mode instead of tool calling — much more reliable across models
     // (especially gpt-5-mini which doesn't reliably use structured tool_calls).
     const messages: LLMMessage[] = [
@@ -317,16 +360,18 @@ Domain: ${this.currentPageContext.domain}`;
 
 Available agents:
 - navigator: ONLY for interacting with the user's CURRENT browser tab (read page, click, fill forms, scroll). Actions: read_page, navigate, click, fill, scroll, analyze_page.
-- researcher: For fetching data from ANY external URL (extraction, comparison, summarization, search). Actions: extract_markdown, summarize, compare, search. ALWAYS include a "url" field.
+- researcher: For fetching data from ANY external URL (extraction, comparison, summarization, search). Actions: extract_markdown, summarize, compare, compare_prices, search. ALWAYS include a "url" or "query" field.
 - memory: For user preferences, browsing history, context recall.
 
 ROUTING RULES (follow strictly):
 - If the query mentions "this page/site" → use navigator
-- If the query mentions multiple sites, stores, comparing, or searching the web → use researcher with real URLs
+- If the query mentions multiple sites, stores, comparing prices, finding the cheapest, or shopping → use researcher with action "compare_prices" (when enabled) or "compare" with real URLs
+- If the query mentions searching the web → use researcher with action "search"
 - If the query is about preferences or history → use memory
-- For cross-site comparisons, create ONE researcher subtask PER site with a real URL (e.g. https://www.amazon.com/s?k=..., https://www.bestbuy.com/site/searchpage.jsp?st=..., https://www.walmart.com/search?q=...)
+- For cross-site price comparisons with compare_prices DISABLED, create ONE researcher subtask PER site with a real URL
 - Keep it minimal — fewer subtasks is better
 - Always include "action" and relevant params (url, query) in each subtask's "input"
+${priceCompBlock}
 ${prefContext}
 ${memoryContext ? `\n${memoryContext}` : ''}
 ${resonanceContext ? `\n${resonanceContext}` : ''}

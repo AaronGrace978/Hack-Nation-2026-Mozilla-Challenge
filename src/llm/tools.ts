@@ -243,6 +243,23 @@ export const RESEARCHER_TOOLS: LLMToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'compare_prices',
+      description: 'Search and compare prices for a product across multiple retailer sites. Uses the user\'s configured comparison sites. Returns ranked results with prices, availability, ratings, and a recommendation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Product name or search query (e.g. "Sony WH-1000XM5 headphones")',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
 ];
 
 export const MEMORY_TOOLS: LLMToolDefinition[] = [

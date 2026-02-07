@@ -19,8 +19,8 @@ This project was built for the Mozilla-sponsored track that asks: *what would it
 | **Core AI & Tooling** | LLM connection (OpenAI, Anthropic, Ollama), MCP tool calling, structured and free-form outputs. |
 | **Browser Capability API** | Live page/tab context, content scripts + Tabstack, multi-agent coordination with distinct roles. |
 | **Tier 1** | Orchestrator: LLM + MCP. |
-| **Tier 2** | Navigator (page interaction), Researcher (cross-site extraction). |
-| **Tier 3** | Full coordination: 5 agents + Consciousness Layer, cross-site workflows. |
+| **Tier 2** | Navigator (page interaction), Researcher (cross-site extraction + price comparison). |
+| **Tier 3** | Full coordination: 5 agents + Consciousness Layer, cross-site workflows, multi-retailer price comparison. |
 | **Example use cases** | **Visual search & action** — identify → search → filter → rank. **Voice-native navigation** — “Find the refund policy and summarize it.” **Cross-site workflows** — “Find flights, check calendar, draft email.” **Memory-aware browsing** — “Is this similar to what I bought last year?” **Preference-first** — budget, accessibility, brand preferences that travel with you. |
 
 Permission is the core design challenge. Nexus explores: *permissions granted to an agent vs. a specific task*, *how long they last*, *which actions require explicit confirmation*, and *what is read-only vs. mutable* — with a 5-level tier, time-bounded grants, and a Guardian that enforces and logs every escalation.
@@ -116,6 +116,7 @@ The Guardian doesn't just protect data -- it watches out for the user's *state*:
 ## Features
 
 - **Multi-Agent Coordination** -- 5 specialized agents working in parallel
+- **Cross-Site Price Comparison** -- Search and compare prices across Amazon, Walmart, Best Buy, Target, eBay, Newegg, and custom sites. Configurable in Settings with per-site toggles, sort order, and auto-compare on product pages
 - **Voice Input/Output** -- Web Speech API integration for hands-free browsing
 - **Cross-Site Workflows** -- "Find flights, check calendar, draft email" in one command
 - **4-Layer Persistent Memory** -- Emotionally-weighted memories that consolidate over time
@@ -124,6 +125,42 @@ The Guardian doesn't just protect data -- it watches out for the user's *state*:
 - **Resonance Dashboard** -- Connection depth, memory layers, dream log, active echoes
 - **BYOK (Bring Your Own Key)** -- OpenAI, Anthropic, or Ollama (local + [Ollama Cloud](https://docs.ollama.com/cloud)); user controls the AI
 - **Tabstack Integration** -- Mozilla's web extraction and automation API
+
+## Price Comparison — Cross-Site Web Scraping
+
+Nexus can search multiple retailer sites in parallel, extract structured price data (product name, price, availability, rating, shipping), and present a ranked comparison — all from a single natural-language query.
+
+### How It Works
+
+1. **Enable** the feature in **Settings → Price Comparison**
+2. **Toggle** which retailer sites to include (Amazon, Walmart, Best Buy, Target, eBay, Newegg, Costco, Home Depot — or add your own)
+3. **Ask** Nexus: *"Find me the cheapest RTX 5080"* or *"Compare prices for AirPods Pro 3"*
+4. The **Researcher agent** builds search URLs from your configured sites, extracts structured JSON (via Tabstack), and ranks the results by your chosen sort order
+5. The **LLM** synthesizes the raw data into a user-friendly markdown comparison with a recommendation
+
+### Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Enable** | Master toggle for price comparison | Off |
+| **Auto-suggest** | Proactively offer to compare when you visit a product page | Off |
+| **Sort by** | `price_asc`, `price_desc`, `rating`, `relevance` | `price_asc` |
+| **Max sites** | How many sites to query in parallel (2–8) | 4 |
+| **Results/site** | Max products returned per retailer | 5 |
+| **Custom sites** | Add any retailer with a `{query}` search URL template | — |
+
+### Permission Design
+
+Price comparison uses **READ_ONLY** permission per retailer domain, scoped to the comparison task and time-bounded. The Guardian agent logs every cross-site extraction. No data is submitted or mutated — browse and extract only.
+
+### Example Queries
+
+- *"Compare prices for Sony WH-1000XM5 headphones"*
+- *"Find the cheapest 4K monitor under $400"*
+- *"Check if this product is cheaper on Amazon or Walmart"*
+- *"Price check AirPods Pro across all my sites"*
+
+---
 
 ## Getting Started
 
@@ -208,9 +245,9 @@ src/
 | Criterion | How Nexus Addresses It |
 |-----------|----------------------|
 | **Execution Boundaries** | Each agent has an explicit role enum and permission ceiling. Guardian is a hard gate with emotional concern tracking. Full audit trail. |
-| **Browser Context** | Tabstack for structured extraction. Content scripts for live DOM. Multi-tab coordination. Layered memory for persistent context. |
-| **Permission Design** | 5-level tiered permissions, scoped per-task/site/agent, time-bounded, with escalation UI. Echo Archaeology tracks permission retreat patterns. |
-| **Legibility & Control** | Real-time activity cards, inspectable audit log, page highlighting, resonance dashboard, NightMind dream log, pause/cancel workflows. |
+| **Browser Context** | Tabstack for structured extraction. Content scripts for live DOM. Multi-tab coordination. Cross-site price comparison with configurable retailers. Layered memory for persistent context. |
+| **Permission Design** | 5-level tiered permissions, scoped per-task/site/agent, time-bounded, with escalation UI. Price comparison uses READ_ONLY per retailer domain, logged by Guardian. Echo Archaeology tracks permission retreat patterns. |
+| **Legibility & Control** | Real-time activity cards, inspectable audit log, page highlighting, resonance dashboard, NightMind dream log, pause/cancel workflows. Price comparison settings give users full control over which sites are queried. |
 | **Judgment & Restraint** | Won't-do list, blocked actions policy, confidence thresholds, concern-level intervention, graceful uncertainty handling, ghost recovery strategies. |
 
 ## Built By

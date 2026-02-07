@@ -5,12 +5,47 @@ import { AgentRole, AgentStatus as AgentStatusEnum } from '../../agents/types';
 // ─── Agent Status Cards ───────────────────────────────────────────────────────
 
 // BostonAi.io — Agent Names (Corporate / Soul)
-const AGENT_META: Record<string, { icon: string; label: string; soulName: string; color: string }> = {
-  [AgentRole.ORCHESTRATOR]: { icon: '🎯', label: 'Orchestrator', soulName: 'The Conductor', color: 'border-yellow-500/30' },
-  [AgentRole.NAVIGATOR]: { icon: '🧭', label: 'Navigator', soulName: 'Pathfinder', color: 'border-blue-500/30' },
-  [AgentRole.RESEARCHER]: { icon: '🔍', label: 'Researcher', soulName: 'Deep Lens', color: 'border-green-500/30' },
-  [AgentRole.MEMORY]: { icon: '🧠', label: 'Memory', soulName: 'Echo Keeper', color: 'border-purple-500/30' },
-  [AgentRole.GUARDIAN]: { icon: '🛡️', label: 'Guardian', soulName: 'Sentinel', color: 'border-red-500/30' },
+const AGENT_META: Record<string, { icon: React.ReactNode; label: string; soulName: string; color: string }> = {
+  [AgentRole.ORCHESTRATOR]: {
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400">
+        <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+      </svg>
+    ),
+    label: 'Orchestrator', soulName: 'The Conductor', color: 'border-yellow-500/30',
+  },
+  [AgentRole.NAVIGATOR]: {
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+        <polygon points="3 11 22 2 13 21 11 13 3 11" />
+      </svg>
+    ),
+    label: 'Navigator', soulName: 'Pathfinder', color: 'border-blue-500/30',
+  },
+  [AgentRole.RESEARCHER]: {
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
+        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    ),
+    label: 'Researcher', soulName: 'Deep Lens', color: 'border-green-500/30',
+  },
+  [AgentRole.MEMORY]: {
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400">
+        <ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+      </svg>
+    ),
+    label: 'Memory', soulName: 'Echo Keeper', color: 'border-purple-500/30',
+  },
+  [AgentRole.GUARDIAN]: {
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    ),
+    label: 'Guardian', soulName: 'Sentinel', color: 'border-red-500/30',
+  },
 };
 
 const STATUS_STYLES: Record<string, { dot: string; label: string }> = {
@@ -79,7 +114,7 @@ export function AgentStatusPanel() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm">{meta.icon}</span>
+                  <span className="flex items-center justify-center">{meta.icon}</span>
                   <div className="flex flex-col">
                     <span className="text-xs font-medium text-surface-0">{meta.label}</span>
                     <span className="text-[9px] text-dark-4 -mt-0.5">{meta.soulName}</span>

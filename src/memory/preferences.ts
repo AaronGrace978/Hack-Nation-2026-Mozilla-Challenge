@@ -1,4 +1,9 @@
 import { memoryStore, type UserPreference } from './store';
+import {
+  DEFAULT_COMPARISON_SITES,
+  DEFAULT_PRICE_COMPARISON_CONFIG,
+  type ComparisonSite,
+} from '../shared/constants';
 
 // ─── Preference Engine ────────────────────────────────────────────────────────
 // Manages user preferences and injects them into agent queries
@@ -8,6 +13,7 @@ export interface PreferenceContext {
   brands?: { preferred: string[]; avoided: string[] };
   accessibility?: { needs: string[] };
   dietary?: { restrictions: string[] };
+  priceComparison?: { enabled: boolean; sites: string[]; sortBy: string };
   general?: Record<string, unknown>;
 }
 
@@ -93,6 +99,15 @@ class PreferenceEngine {
       for (const [key, value] of Object.entries(ctx.general)) {
         parts.push(`${key}: ${String(value)}`);
       }
+    }
+
+    // Price comparison context
+    const pcEnabled = await memoryStore.getSetting<boolean>('price_comparison_enabled', DEFAULT_PRICE_COMPARISON_CONFIG.enabled);
+    if (pcEnabled) {
+      const pcSites = await memoryStore.getSetting<ComparisonSite[]>('price_comparison_sites', DEFAULT_COMPARISON_SITES);
+      const activeSites = pcSites.filter((s) => s.enabled).map((s) => s.name);
+      const sortBy = await memoryStore.getSetting<string>('price_comparison_sort', DEFAULT_PRICE_COMPARISON_CONFIG.sortBy);
+      parts.push(`Price comparison: ENABLED across ${activeSites.join(', ')} (sorted by ${sortBy})`);
     }
 
     if (parts.length === 0) return '';

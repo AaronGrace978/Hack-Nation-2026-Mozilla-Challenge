@@ -72,7 +72,7 @@ export function ResonancePanel() {
           Consciousness Layer by BostonAi.io
         </span>
         <span className="text-[9px] text-dark-4 opacity-50">
-          🦊 Mozilla Hackathon
+          Mozilla Hackathon
         </span>
       </div>
     </div>

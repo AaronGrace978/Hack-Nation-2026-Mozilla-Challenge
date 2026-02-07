@@ -48,12 +48,32 @@ const AGENT_COLORS: Record<string, string> = {
   guardian: 'text-red-400',
 };
 
-const AGENT_ICONS: Record<string, string> = {
-  orchestrator: '🎯',
-  navigator: '🧭',
-  researcher: '🔍',
-  memory: '🧠',
-  guardian: '🛡️',
+const AGENT_ICONS: Record<string, React.ReactNode> = {
+  orchestrator: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
+  navigator: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="3 11 22 2 13 21 11 13 3 11" />
+    </svg>
+  ),
+  researcher: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  ),
+  memory: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  ),
+  guardian: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  ),
 };
 
 // ─── Chat Interface Component ─────────────────────────────────────────────────
@@ -101,7 +121,11 @@ export function ChatInterface() {
           const isPartner = phase === 'Resonant Partnership';
           return (
           <div className="flex flex-col items-center justify-center h-full text-center opacity-60 px-4">
-            <div className="text-3xl mb-2">🦊</div>
+            <div className="mb-2 text-nexus-400">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
             <h3 className="text-sm font-semibold text-surface-0 mb-1">
               {isPartner ? 'Good to see you, partner' : phase === 'Introduction' ? 'Welcome to Nexus' : 'Welcome back'}
             </h3>
@@ -197,7 +221,11 @@ function MessageBubble({ message }: { message: ChatMessagePayload }) {
     <div className={`animate-slide-up ${isUser ? 'flex justify-end' : ''}`}>
       {isAgent && message.agentRole && (
         <div className={`flex items-center gap-1 mb-0.5 text-xs ${AGENT_COLORS[message.agentRole] ?? 'text-dark-4'}`}>
-          <span>{AGENT_ICONS[message.agentRole] ?? '🤖'}</span>
+          <span className="flex items-center">{AGENT_ICONS[message.agentRole] ?? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="3" /><line x1="12" y1="8" x2="12" y2="11" />
+            </svg>
+          )}</span>
           <span className="capitalize">{message.agentRole}</span>
         </div>
       )}

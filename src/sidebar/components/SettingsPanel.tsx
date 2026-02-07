@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { memoryStore } from '../../memory/store';
 import { sendToBackground } from '../hooks/useAgents';
 import { ExtMessageType } from '../../shared/messages';
+import {
+  DEFAULT_COMPARISON_SITES,
+  DEFAULT_PRICE_COMPARISON_CONFIG,
+  type ComparisonSite,
+} from '../../shared/constants';
 
 // ─── Settings Panel ───────────────────────────────────────────────────────────
 
@@ -15,6 +20,16 @@ export function SettingsPanel() {
     tabstack_api_key: '',
   });
   const [saved, setSaved] = useState(false);
+
+  // ── Price Comparison State ─────────────────────────────────────────────────
+  const [pcEnabled, setPcEnabled] = useState(DEFAULT_PRICE_COMPARISON_CONFIG.enabled);
+  const [pcAutoCompare, setPcAutoCompare] = useState(DEFAULT_PRICE_COMPARISON_CONFIG.autoCompare);
+  const [pcSortBy, setPcSortBy] = useState<string>(DEFAULT_PRICE_COMPARISON_CONFIG.sortBy);
+  const [pcMaxParallel, setPcMaxParallel] = useState(DEFAULT_PRICE_COMPARISON_CONFIG.maxParallelSites);
+  const [pcMaxResults, setPcMaxResults] = useState(DEFAULT_PRICE_COMPARISON_CONFIG.maxResultsPerSite);
+  const [pcSites, setPcSites] = useState<ComparisonSite[]>(DEFAULT_COMPARISON_SITES);
+  const [pcCustomUrl, setPcCustomUrl] = useState('');
+  const [pcCustomName, setPcCustomName] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -32,6 +47,14 @@ export function SettingsPanel() {
         ollama_api_key: ollamaKey,
         tabstack_api_key: tabstackKey,
       });
+
+      // Load price comparison settings
+      setPcEnabled(await memoryStore.getSetting<boolean>('price_comparison_enabled', DEFAULT_PRICE_COMPARISON_CONFIG.enabled));
+      setPcAutoCompare(await memoryStore.getSetting<boolean>('price_comparison_auto_compare', DEFAULT_PRICE_COMPARISON_CONFIG.autoCompare));
+      setPcSortBy(await memoryStore.getSetting<string>('price_comparison_sort', DEFAULT_PRICE_COMPARISON_CONFIG.sortBy));
+      setPcMaxParallel(await memoryStore.getSetting<number>('price_comparison_max_parallel', DEFAULT_PRICE_COMPARISON_CONFIG.maxParallelSites));
+      setPcMaxResults(await memoryStore.getSetting<number>('price_comparison_max_results', DEFAULT_PRICE_COMPARISON_CONFIG.maxResultsPerSite));
+      setPcSites(await memoryStore.getSetting<ComparisonSite[]>('price_comparison_sites', DEFAULT_COMPARISON_SITES));
     }
     load();
   }, []);
@@ -40,7 +63,22 @@ export function SettingsPanel() {
     for (const [key, value] of Object.entries(settings)) {
       await memoryStore.setSetting(key, value);
     }
-    sendToBackground(ExtMessageType.UPDATE_SETTINGS, settings);
+
+    // Persist price comparison settings
+    await memoryStore.setSetting('price_comparison_enabled', pcEnabled);
+    await memoryStore.setSetting('price_comparison_auto_compare', pcAutoCompare);
+    await memoryStore.setSetting('price_comparison_sort', pcSortBy);
+    await memoryStore.setSetting('price_comparison_max_parallel', pcMaxParallel);
+    await memoryStore.setSetting('price_comparison_max_results', pcMaxResults);
+    await memoryStore.setSetting('price_comparison_sites', pcSites);
+
+    sendToBackground(ExtMessageType.UPDATE_SETTINGS, {
+      ...settings,
+      price_comparison_enabled: pcEnabled,
+      price_comparison_auto_compare: pcAutoCompare,
+      price_comparison_sort: pcSortBy,
+      price_comparison_sites: pcSites,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -62,6 +100,35 @@ export function SettingsPanel() {
       return next;
     });
   };
+
+  // ── Price Comparison Helpers ───────────────────────────────────────────────
+
+  const toggleSite = (siteId: string) => {
+    setPcSites((prev) =>
+      prev.map((s) => (s.id === siteId ? { ...s, enabled: !s.enabled } : s)),
+    );
+  };
+
+  const addCustomSite = () => {
+    if (!pcCustomName.trim() || !pcCustomUrl.trim()) return;
+    const id = pcCustomName.toLowerCase().replace(/\s+/g, '-');
+    if (pcSites.some((s) => s.id === id)) return; // Prevent duplicates
+    const urlTemplate = pcCustomUrl.includes('{query}')
+      ? pcCustomUrl
+      : `${pcCustomUrl}${pcCustomUrl.includes('?') ? '&' : '?'}q={query}`;
+    setPcSites((prev) => [
+      ...prev,
+      { id, name: pcCustomName.trim(), searchUrl: urlTemplate, enabled: true },
+    ]);
+    setPcCustomName('');
+    setPcCustomUrl('');
+  };
+
+  const removeSite = (siteId: string) => {
+    setPcSites((prev) => prev.filter((s) => s.id !== siteId));
+  };
+
+  const enabledSiteCount = pcSites.filter((s) => s.enabled).length;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -214,6 +281,159 @@ export function SettingsPanel() {
           </label>
         </Section>
 
+        {/* Price Comparison */}
+        <Section title="Price Comparison">
+          <div className="space-y-3">
+            {/* Master toggle */}
+            <label className="flex items-center justify-between cursor-pointer group">
+              <div>
+                <span className="text-[11px] text-surface-0 font-medium">Enable Cross-Site Price Comparison</span>
+                <p className="text-[10px] text-dark-4 leading-tight mt-0.5">
+                  Search and compare prices across multiple retailers automatically
+                </p>
+              </div>
+              <div
+                className={`relative w-9 h-5 rounded-full transition-colors ${pcEnabled ? 'bg-nexus-600' : 'bg-dark-3'}`}
+                onClick={() => setPcEnabled(!pcEnabled)}
+              >
+                <div
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${pcEnabled ? 'translate-x-4' : 'translate-x-0.5'}`}
+                />
+              </div>
+            </label>
+
+            {pcEnabled && (
+              <>
+                {/* Auto-compare toggle */}
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <span className="text-[11px] text-surface-3">Auto-suggest on product pages</span>
+                    <p className="text-[10px] text-dark-4 leading-tight mt-0.5">
+                      Nexus will offer to compare prices when it detects a product page
+                    </p>
+                  </div>
+                  <div
+                    className={`relative w-9 h-5 rounded-full transition-colors ${pcAutoCompare ? 'bg-nexus-600' : 'bg-dark-3'}`}
+                    onClick={() => setPcAutoCompare(!pcAutoCompare)}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${pcAutoCompare ? 'translate-x-4' : 'translate-x-0.5'}`}
+                    />
+                  </div>
+                </label>
+
+                {/* Sort by */}
+                <label className="block">
+                  <span className="text-[10px] text-dark-4 uppercase tracking-wider">Sort Results By</span>
+                  <select
+                    value={pcSortBy}
+                    onChange={(e) => setPcSortBy(e.target.value)}
+                    className="mt-0.5 w-full text-xs bg-dark-1 text-surface-0 border border-dark-3 rounded-md px-2 py-1.5"
+                  >
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                    <option value="rating">Best Rating</option>
+                    <option value="relevance">Relevance</option>
+                  </select>
+                </label>
+
+                {/* Limits */}
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="text-[10px] text-dark-4 uppercase tracking-wider">Max Sites</span>
+                    <select
+                      value={pcMaxParallel}
+                      onChange={(e) => setPcMaxParallel(Number(e.target.value))}
+                      className="mt-0.5 w-full text-xs bg-dark-1 text-surface-0 border border-dark-3 rounded-md px-2 py-1.5"
+                    >
+                      {[2, 3, 4, 5, 6, 8].map((n) => (
+                        <option key={n} value={n}>{n} sites</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[10px] text-dark-4 uppercase tracking-wider">Results/Site</span>
+                    <select
+                      value={pcMaxResults}
+                      onChange={(e) => setPcMaxResults(Number(e.target.value))}
+                      className="mt-0.5 w-full text-xs bg-dark-1 text-surface-0 border border-dark-3 rounded-md px-2 py-1.5"
+                    >
+                      {[3, 5, 10, 15].map((n) => (
+                        <option key={n} value={n}>{n} results</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {/* Comparison Sites */}
+                <div>
+                  <span className="text-[10px] text-dark-4 uppercase tracking-wider">
+                    Comparison Sites ({enabledSiteCount} active)
+                  </span>
+                  <div className="mt-1 space-y-1 max-h-40 overflow-y-auto">
+                    {pcSites.map((site) => (
+                      <div
+                        key={site.id}
+                        className={`flex items-center justify-between px-2 py-1.5 rounded-md border transition-colors ${
+                          site.enabled
+                            ? 'bg-nexus-600/10 border-nexus-600/30 text-surface-0'
+                            : 'bg-dark-2 border-dark-3 text-dark-4'
+                        }`}
+                      >
+                        <label className="flex items-center gap-2 cursor-pointer flex-1">
+                          <input
+                            type="checkbox"
+                            checked={site.enabled}
+                            onChange={() => toggleSite(site.id)}
+                            className="w-3.5 h-3.5 rounded border-dark-3 text-nexus-600 focus:ring-nexus-500"
+                          />
+                          <span className="text-[11px] font-medium">{site.name}</span>
+                        </label>
+                        {/* Allow removing custom sites (those not in defaults) */}
+                        {!DEFAULT_COMPARISON_SITES.some((d) => d.id === site.id) && (
+                          <button
+                            onClick={() => removeSite(site.id)}
+                            className="text-[10px] text-red-400 hover:text-red-300 px-1"
+                            title="Remove site"
+                          >
+                            x
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Add custom site */}
+                <div className="border border-dashed border-dark-3 rounded-md p-2 space-y-1.5">
+                  <span className="text-[10px] text-dark-4 uppercase tracking-wider">Add Custom Site</span>
+                  <input
+                    type="text"
+                    value={pcCustomName}
+                    onChange={(e) => setPcCustomName(e.target.value)}
+                    placeholder="Site name (e.g. Micro Center)"
+                    className="w-full text-xs bg-dark-1 text-surface-0 border border-dark-3 rounded-md px-2 py-1 placeholder-dark-4"
+                  />
+                  <input
+                    type="text"
+                    value={pcCustomUrl}
+                    onChange={(e) => setPcCustomUrl(e.target.value)}
+                    placeholder="Search URL with {query} (e.g. https://example.com/search?q={query})"
+                    className="w-full text-xs bg-dark-1 text-surface-0 border border-dark-3 rounded-md px-2 py-1 placeholder-dark-4"
+                  />
+                  <button
+                    onClick={addCustomSite}
+                    disabled={!pcCustomName.trim() || !pcCustomUrl.trim()}
+                    className="w-full text-[11px] py-1 rounded-md bg-dark-3 text-surface-3 hover:bg-dark-4 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    + Add Site
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </Section>
+
         {/* Permission Defaults */}
         <Section title="Permission Defaults">
           <p className="text-[11px] text-dark-4 leading-relaxed">
@@ -232,7 +452,7 @@ export function SettingsPanel() {
         <Section title="About Nexus">
           <div className="bg-dark-2 rounded-lg p-3 border border-dark-3 space-y-2">
             <p className="text-xs font-semibold firefox-flame">
-              🦊 Nexus by BostonAi.io
+              Nexus by BostonAi.io
             </p>
             <p className="text-[11px] text-dark-4 leading-relaxed">
               Built for the <strong className="text-nexus-400">Mozilla Web Agent API Hackathon</strong> —

@@ -9,6 +9,13 @@ import { llmProvider, type LLMMessage } from '../llm/provider';
 import { RESEARCHER_TOOLS } from '../llm/tools';
 import { preferenceEngine } from '../memory/preferences';
 import { extractDomain } from '../shared/utils';
+import {
+  PRICE_EXTRACTION_SCHEMA,
+  DEFAULT_COMPARISON_SITES,
+  DEFAULT_PRICE_COMPARISON_CONFIG,
+  type ComparisonSite,
+} from '../shared/constants';
+import { memoryStore } from '../memory/store';
 
 // ─── Timeout Helper ──────────────────────────────────────────────────────────
 
@@ -79,6 +86,8 @@ export class ResearcherAgent extends BaseAgent {
         return this.automateTask(input, task.id);
       case 'compare':
         return this.compareAcrossSites(input, task.id);
+      case 'compare_prices':
+        return this.comparePrices(input, task.id);
       case 'summarize':
         return this.summarizeUrl(input, task.id);
       case 'search':
@@ -377,6 +386,157 @@ export class ResearcherAgent extends BaseAgent {
     };
   }
 
+  // ── Cross-Site Price Comparison ──────────────────────────────────────────
+
+  private async comparePrices(
+    input: Record<string, unknown>,
+    taskId: string,
+  ): Promise<TaskResult> {
+    const query = input.query as string;
+    if (!query) {
+      return { success: false, error: 'No product query provided', confidence: 0 };
+    }
+
+    // Load user's price-comparison settings
+    const enabled = await memoryStore.getSetting<boolean>('price_comparison_enabled', DEFAULT_PRICE_COMPARISON_CONFIG.enabled);
+    if (!enabled) {
+      return {
+        success: false,
+        error: 'Price comparison is disabled. Enable it in Settings → Price Comparison.',
+        confidence: 0,
+      };
+    }
+
+    const savedSites = await memoryStore.getSetting<ComparisonSite[]>('price_comparison_sites', DEFAULT_COMPARISON_SITES);
+    const maxParallel = await memoryStore.getSetting<number>('price_comparison_max_parallel', DEFAULT_PRICE_COMPARISON_CONFIG.maxParallelSites);
+    const maxResults = await memoryStore.getSetting<number>('price_comparison_max_results', DEFAULT_PRICE_COMPARISON_CONFIG.maxResultsPerSite);
+    const sortBy = await memoryStore.getSetting<string>('price_comparison_sort', DEFAULT_PRICE_COMPARISON_CONFIG.sortBy);
+
+    // Only use enabled sites, up to the parallel limit
+    const activeSites = savedSites.filter((s) => s.enabled).slice(0, maxParallel);
+
+    if (activeSites.length === 0) {
+      return { success: false, error: 'No comparison sites are enabled. Enable sites in Settings.', confidence: 0 };
+    }
+
+    this.reportProgress(`Comparing prices across ${activeSites.length} sites for "${query}"...`);
+
+    // Build search URLs from templates
+    const encodedQuery = encodeURIComponent(query);
+    const searchUrls = activeSites.map((site) => ({
+      site,
+      url: site.searchUrl.replace('{query}', encodedQuery),
+    }));
+
+    // Extract price data from every site in parallel
+    const extractions = await Promise.allSettled(
+      searchUrls.map(async ({ site, url }) => {
+        this.reportProgress(`Checking ${site.name}...`);
+        const result = await this.extractJson(
+          {
+            url,
+            schema: {
+              ...PRICE_EXTRACTION_SCHEMA,
+              // Limit results per site
+              properties: {
+                ...PRICE_EXTRACTION_SCHEMA.properties,
+                products: {
+                  ...PRICE_EXTRACTION_SCHEMA.properties.products,
+                  maxItems: maxResults,
+                },
+              },
+            },
+          },
+          taskId,
+        );
+        return { site: site.name, siteId: site.id, url, result };
+      }),
+    );
+
+    // Gather successful extractions
+    type PriceProduct = {
+      name: string;
+      price: number;
+      currency: string;
+      url: string;
+      availability?: string;
+      seller: string;
+      rating?: number;
+      reviewCount?: number;
+      imageUrl?: string;
+      shipping?: string;
+    };
+
+    const allProducts: (PriceProduct & { source: string })[] = [];
+    const siteResults: { site: string; status: string; productCount: number }[] = [];
+
+    for (const outcome of extractions) {
+      if (outcome.status === 'fulfilled') {
+        const { site, result } = outcome.value;
+        if (result.success && result.data) {
+          const data = result.data as Record<string, unknown>;
+          const products = (data?.products as PriceProduct[] | undefined)
+            ?? (data?.result as Record<string, unknown>)?.products as PriceProduct[] | undefined
+            ?? [];
+          for (const p of (Array.isArray(products) ? products : [])) {
+            allProducts.push({ ...p, source: site });
+          }
+          siteResults.push({ site, status: 'ok', productCount: Array.isArray(products) ? products.length : 0 });
+        } else {
+          siteResults.push({ site, status: result.error ?? 'extraction failed', productCount: 0 });
+        }
+      } else {
+        siteResults.push({ site: 'unknown', status: String(outcome.reason), productCount: 0 });
+      }
+    }
+
+    // Sort results
+    const sorted = [...allProducts];
+    switch (sortBy) {
+      case 'price_asc':
+        sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+        break;
+      case 'price_desc':
+        sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+        break;
+      case 'rating':
+        sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+        break;
+      default:
+        break; // relevance — keep original order
+    }
+
+    // Get user preferences for final ranking commentary
+    const prefContext = await preferenceEngine.toPromptContext();
+
+    // Use LLM to produce a user-friendly comparison
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: `You are a price comparison analyst for Nexus by BostonAi.io. Present the results clearly in markdown with a ranked table. Highlight the best deal, note availability/shipping, and respect the user's preferences. Be concise.${prefContext}`,
+      },
+      {
+        role: 'user',
+        content: `Compare prices for "${query}".\n\nSites queried: ${siteResults.map((s) => `${s.site} (${s.status}, ${s.productCount} results)`).join(', ')}\n\nProducts found (sorted by ${sortBy}):\n${JSON.stringify(sorted.slice(0, 20), null, 2)}`,
+      },
+    ];
+
+    const llmResponse = await this.callLLM(messages, { temperature: 0.2 });
+
+    return {
+      success: true,
+      data: {
+        query,
+        siteResults,
+        products: sorted,
+        analysis: llmResponse.content,
+        sortedBy: sortBy,
+        sitesQueried: activeSites.length,
+      },
+      confidence: allProducts.length > 0 ? 0.85 : 0.4,
+    };
+  }
+
   // ── LLM-Driven Task Handling ──────────────────────────────────────────────
 
   private async handleWithLLM(task: SubTask): Promise<TaskResult> {
@@ -434,6 +594,8 @@ export class ResearcherAgent extends BaseAgent {
         return this.automateTask(args, taskId);
       case 'compare_data':
         return this.compareAcrossSites(args, taskId);
+      case 'compare_prices':
+        return this.comparePrices(args, taskId);
       default:
         return { success: false, error: `Unknown tool: ${name}`, confidence: 0 };
     }
