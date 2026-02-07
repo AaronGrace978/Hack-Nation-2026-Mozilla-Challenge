@@ -101,14 +101,14 @@ export function ChatInterface() {
           const isPartner = phase === 'Resonant Partnership';
           return (
           <div className="flex flex-col items-center justify-center h-full text-center opacity-60 px-4">
-            <div className="text-3xl mb-3">🌐</div>
+            <div className="text-3xl mb-2">🦊</div>
             <h3 className="text-sm font-semibold text-surface-0 mb-1">
               {isPartner ? 'Good to see you, partner' : phase === 'Introduction' ? 'Welcome to Nexus' : 'Welcome back'}
             </h3>
             <p className="text-xs text-dark-4 leading-relaxed">
               {isPartner
                 ? "We're in sync. Tell me what you need — I'll anticipate, coordinate, and have your back."
-                : 'Your universal web agent. Tell me what you need — I\'ll coordinate across sites, remember your preferences, and always ask before acting.'}
+                : 'Your universal web agent — built for the Mozilla Web Agent API Hackathon. Tell me what you need — I\'ll coordinate across sites, remember your preferences, and always ask before acting.'}
             </p>
             <div className="mt-4 space-y-1.5 text-xs text-left w-full">
               <SuggestionChip

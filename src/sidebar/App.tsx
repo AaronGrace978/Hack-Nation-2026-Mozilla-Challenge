@@ -31,12 +31,14 @@ export function App() {
 
   return (
     <div className="flex flex-col h-screen bg-dark-0 text-surface-3">
-      {/* Header */}
+      {/* Header — Mozilla Hackathon branded */}
       <header className="flex items-center justify-between px-3 py-2 border-b border-dark-3 bg-dark-1">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🌐</span>
-          <h1 className="text-sm font-bold text-surface-0 tracking-tight">Nexus</h1>
-          <span className="text-[10px] text-dark-4 bg-dark-3 px-1.5 py-0.5 rounded">v1.0</span>
+          <span className="text-lg">🦊</span>
+          <h1 className="text-sm font-bold firefox-flame tracking-tight">Nexus</h1>
+          <span className="text-[10px] text-nexus-400 bg-nexus-600/10 px-1.5 py-0.5 rounded border border-nexus-600/20">
+            Mozilla Hackathon
+          </span>
         </div>
         <span className="text-[9px] text-dark-4 opacity-70 tracking-wide">BostonAi.io</span>
       </header>

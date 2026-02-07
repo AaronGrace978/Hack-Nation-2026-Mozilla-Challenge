@@ -8,32 +8,43 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Firefox flame accent — warm orange → red
         nexus: {
-          50: '#f0f4ff',
-          100: '#dbe4ff',
-          200: '#bac8ff',
-          300: '#91a7ff',
-          400: '#748ffc',
-          500: '#5c7cfa',
-          600: '#4c6ef5',
-          700: '#4263eb',
-          800: '#3b5bdb',
-          900: '#364fc7',
-          950: '#1e3a8a',
+          50: '#fff4e6',
+          100: '#ffe8cc',
+          200: '#ffd8a8',
+          300: '#ffc078',
+          400: '#ff922b',   // Primary accent — Firefox orange
+          500: '#ff6b35',
+          600: '#fd7e14',   // Button / active state
+          700: '#e8590c',
+          800: '#d9480f',
+          900: '#c92a2a',
+          950: '#862e2e',
         },
+        // Firefox Proton light text
         surface: {
-          0: '#ffffff',
-          1: '#f8f9fa',
-          2: '#f1f3f5',
-          3: '#e9ecef',
-          4: '#dee2e6',
+          0: '#fbfbfe',
+          1: '#f0f0f4',
+          2: '#e0e0e6',
+          3: '#cfcfd8',
+          4: '#b1b1b9',
         },
+        // Firefox Proton dark backgrounds
         dark: {
-          0: '#1a1b1e',
-          1: '#25262b',
-          2: '#2c2e33',
-          3: '#373a40',
-          4: '#495057',
+          0: '#1c1b22',     // Main background
+          1: '#2b2a33',     // Surface
+          2: '#32313c',     // Elevated surface
+          3: '#3f3e47',     // Borders / dividers
+          4: '#5b5b66',     // Muted text
+        },
+        // Extra Mozilla accents for variety
+        moz: {
+          blue: '#0060df',
+          purple: '#9059ff',
+          green: '#058b00',
+          red: '#ff4f5e',
+          yellow: '#ffbd4f',
         },
       },
       animation: {

@@ -2,19 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Base Styles ──────────────────────────────────────────────────────────── */
+/* ─── Base Styles — Mozilla / Firefox Proton Dark ────────────────────────────── */
 
 :root {
-  --nexus-primary: #4c6ef5;
-  --nexus-bg: #1a1b1e;
-  --nexus-surface: #25262b;
-  --nexus-border: #373a40;
-  --nexus-text: #c1c2c5;
-  --nexus-text-bright: #f1f3f5;
-  --nexus-success: #51cf66;
-  --nexus-warning: #ffd43b;
-  --nexus-error: #ff6b6b;
-  --nexus-info: #339af0;
+  --nexus-primary: #fd7e14;          /* Firefox orange */
+  --nexus-primary-hover: #e8590c;
+  --nexus-bg: #1c1b22;              /* Proton dark background */
+  --nexus-surface: #2b2a33;
+  --nexus-border: #3f3e47;
+  --nexus-text: #cfcfd8;
+  --nexus-text-bright: #fbfbfe;
+  --nexus-success: #058b00;          /* Mozilla green */
+  --nexus-warning: #ffbd4f;          /* Mozilla yellow */
+  --nexus-error: #ff4f5e;            /* Mozilla red */
+  --nexus-info: #0060df;             /* Mozilla blue */
 }
 
 * {
@@ -24,7 +25,7 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Fira Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--nexus-bg);
   color: var(--nexus-text);
   font-size: 13px;
@@ -57,7 +58,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #495057;
+  background: #5b5b66;
 }
 
 /* ─── Markdown Rendering ───────────────────────────────────────────────────── */
@@ -82,7 +83,7 @@ body {
 }
 
 .markdown-content code {
-  background: rgba(76, 110, 245, 0.15);
+  background: rgba(253, 126, 20, 0.15);       /* Firefox orange tint */
   padding: 0.1em 0.3em;
   border-radius: 3px;
   font-size: 0.9em;
@@ -117,7 +118,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent 25%,
-    rgba(76, 110, 245, 0.1) 50%,
+    rgba(253, 126, 20, 0.1) 50%,            /* Firefox orange shimmer */
     transparent 75%
   );
   background-size: 200% 100%;
@@ -135,3 +136,12 @@ body {
 
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ─── Firefox Flame Gradient Utility ───────────────────────────────────────── */
+
+.firefox-flame {
+  background: linear-gradient(135deg, #ff922b 0%, #ff4f5e 50%, #9059ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

@@ -230,12 +230,26 @@ export function SettingsPanel() {
 
         {/* About */}
         <Section title="About Nexus">
-          <p className="text-[11px] text-dark-4 leading-relaxed">
-            Nexus is a universal web agent built for the Mozilla Web Agent API hackathon.
-            It brings your own AI to every website with permission-first design,
-            multi-agent coordination, and persistent memory.
-          </p>
-          <p className="text-[10px] text-dark-4 mt-1">Version 1.0.0</p>
+          <div className="bg-dark-2 rounded-lg p-3 border border-dark-3 space-y-2">
+            <p className="text-xs font-semibold firefox-flame">
+              🦊 Nexus by BostonAi.io
+            </p>
+            <p className="text-[11px] text-dark-4 leading-relaxed">
+              Built for the <strong className="text-nexus-400">Mozilla Web Agent API Hackathon</strong> —
+              <em> Bring Your Own AI to Every Website</em>. Nexus treats AI as a
+              browser capability with permission-first design, multi-agent coordination,
+              and consciousness-powered memory.
+            </p>
+            <div className="flex items-center gap-3 pt-1 border-t border-dark-3">
+              <span className="text-[10px] text-dark-4">v1.0.0</span>
+              <a href="https://bostonai.io" target="_blank" rel="noopener" className="text-[10px] text-nexus-400 hover:underline">
+                BostonAi.io
+              </a>
+              <a href="https://mozilla.org" target="_blank" rel="noopener" className="text-[10px] text-moz-blue hover:underline">
+                Mozilla
+              </a>
+            </div>
+          </div>
         </Section>
       </div>
 

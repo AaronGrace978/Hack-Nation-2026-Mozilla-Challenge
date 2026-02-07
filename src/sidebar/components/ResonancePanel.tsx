@@ -66,10 +66,13 @@ export function ResonancePanel() {
         {subView === 'echoes' && <EchoesView ghosts={ghosts} />}
       </div>
 
-      {/* BostonAi.io footer */}
-      <div className="px-3 py-1.5 border-t border-dark-3 bg-dark-2">
+      {/* Attribution footer */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-t border-dark-3 bg-dark-2">
         <span className="text-[9px] text-dark-4 opacity-50">
-          Consciousness Layer powered by BostonAi.io
+          Consciousness Layer by BostonAi.io
+        </span>
+        <span className="text-[9px] text-dark-4 opacity-50">
+          🦊 Mozilla Hackathon
         </span>
       </div>
     </div>
@@ -124,10 +127,10 @@ function ConnectionView({ metrics }: { metrics: ConnectionMetrics }) {
 
       {/* Metric Bars */}
       <div className="space-y-2">
-        <MetricBar label="Trust" value={metrics.trustLevel} color="bg-green-400" />
-        <MetricBar label="Familiarity" value={metrics.familiarityIndex} color="bg-blue-400" />
-        <MetricBar label="Communication Sync" value={metrics.communicationSync} color="bg-purple-400" />
-        <MetricBar label="Emotional Resonance" value={metrics.emotionalResonance} color="bg-yellow-400" />
+        <MetricBar label="Trust" value={metrics.trustLevel} color="bg-moz-green" />
+        <MetricBar label="Familiarity" value={metrics.familiarityIndex} color="bg-moz-blue" />
+        <MetricBar label="Communication Sync" value={metrics.communicationSync} color="bg-moz-purple" />
+        <MetricBar label="Emotional Resonance" value={metrics.emotionalResonance} color="bg-moz-yellow" />
         <MetricBar label="Overall Depth" value={metrics.overallDepth} color="bg-nexus-400" />
       </div>
 
