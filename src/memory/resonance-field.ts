@@ -113,6 +113,9 @@ class ResonanceFieldEngine {
     // Update trust based on outcome
     this.updateTrust(outcome, emotion);
 
+    // Update emotional resonance (how well we "read the room")
+    this.updateEmotionalResonance(emotion, outcome);
+
     // Update familiarity
     this.updateFamiliarity(userInput);
 
@@ -222,6 +225,25 @@ class ResonanceFieldEngine {
     this.metrics.trustLevel = Math.max(
       0,
       Math.min(100, this.metrics.trustLevel + (trustDelta[outcome] ?? 0) + emotionalBonus),
+    );
+  }
+
+  // ── Internal: Emotional Resonance (reading the room) ─────────────────────
+
+  private updateEmotionalResonance(
+    emotion: EmotionalSignature,
+    outcome: 'success' | 'failure' | 'partial' | 'cancelled',
+  ): void {
+    const resonanceDelta: Record<string, number> = {
+      success: emotion.valence > 0 ? 1.5 + emotion.intensity : 0.3,
+      partial: emotion.valence > 0 ? 0.5 : -0.5,
+      failure: -2,
+      cancelled: -0.5,
+    };
+    const delta = resonanceDelta[outcome] ?? 0;
+    this.metrics.emotionalResonance = Math.max(
+      0,
+      Math.min(100, this.metrics.emotionalResonance + delta),
     );
   }
 

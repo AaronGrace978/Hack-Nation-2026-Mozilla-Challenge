@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '../hooks/useAgents';
 import { VoiceInput } from './VoiceInput';
+import { resonanceField } from '../../memory/resonance-field';
 import type { ChatMessagePayload } from '../../shared/messages';
 
 // ─── Page Awareness Hook ──────────────────────────────────────────────────────
@@ -95,13 +96,19 @@ export function ChatInterface() {
     <div className="flex flex-col h-full">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-        {messages.length === 0 && (
+        {messages.length === 0 && (() => {
+          const phase = resonanceField.getConnectionPhase();
+          const isPartner = phase === 'Resonant Partnership';
+          return (
           <div className="flex flex-col items-center justify-center h-full text-center opacity-60 px-4">
             <div className="text-3xl mb-3">🌐</div>
-            <h3 className="text-sm font-semibold text-surface-0 mb-1">Welcome to Nexus</h3>
+            <h3 className="text-sm font-semibold text-surface-0 mb-1">
+              {isPartner ? 'Good to see you, partner' : phase === 'Introduction' ? 'Welcome to Nexus' : 'Welcome back'}
+            </h3>
             <p className="text-xs text-dark-4 leading-relaxed">
-              Your universal web agent. Tell me what you need -- I'll coordinate
-              across sites, remember your preferences, and always ask before acting.
+              {isPartner
+                ? "We're in sync. Tell me what you need — I'll anticipate, coordinate, and have your back."
+                : 'Your universal web agent. Tell me what you need — I\'ll coordinate across sites, remember your preferences, and always ask before acting.'}
             </p>
             <div className="mt-4 space-y-1.5 text-xs text-left w-full">
               <SuggestionChip
@@ -118,7 +125,8 @@ export function ChatInterface() {
               />
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />

@@ -78,19 +78,48 @@ export function ResonancePanel() {
 
 // ─── Connection View ──────────────────────────────────────────────────────────
 
+const PARTNER_DEPTH = 90;
+
 function ConnectionView({ metrics }: { metrics: ConnectionMetrics }) {
   const phase = resonanceField.getConnectionPhase();
   const style = resonanceField.getCommunicationStyle();
+  const isPartner = phase === 'Resonant Partnership';
+  const depthPct = Math.round(metrics.overallDepth);
+  const progressToPartner = Math.min(100, (depthPct / PARTNER_DEPTH) * 100);
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Phase Badge */}
+      {/* Phase Badge — Partner gets special treatment */}
       <div className="text-center">
         <div className="text-[10px] text-dark-4 uppercase tracking-wider mb-1">Connection Phase</div>
-        <div className="text-sm font-bold text-nexus-400">{phase}</div>
-        <div className="text-[10px] text-dark-4 mt-1">
-          Session #{metrics.sessionCount} | {metrics.totalInteractions} total interactions
-        </div>
+        {isPartner ? (
+          <>
+            <div className="text-sm font-bold text-nexus-400">Resonant Partnership</div>
+            <div className="text-[10px] text-nexus-400/80 mt-1">
+              You and Nexus are in sync. I’ve got your back.
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-sm font-bold text-nexus-400">{phase}</div>
+            <div className="text-[10px] text-dark-4 mt-1">
+              Session #{metrics.sessionCount} | {metrics.totalInteractions} total interactions
+            </div>
+            {/* Path to Partner */}
+            <div className="mt-2 pt-2 border-t border-dark-3">
+              <div className="text-[9px] text-dark-4 uppercase tracking-wider mb-1">Path to Partner</div>
+              <div className="h-1.5 bg-dark-3 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-nexus-500 rounded-full transition-all duration-500"
+                  style={{ width: `${progressToPartner}%` }}
+                />
+              </div>
+              <div className="text-[10px] text-dark-4 mt-1">
+                {depthPct}% depth — keep going: more successful conversations deepen the connection.
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Metric Bars */}
