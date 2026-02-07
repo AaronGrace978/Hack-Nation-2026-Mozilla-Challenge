@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Styles ──────────────────────────────────────────────────────────── */
+
+:root {
+  --nexus-primary: #4c6ef5;
+  --nexus-bg: #1a1b1e;
+  --nexus-surface: #25262b;
+  --nexus-border: #373a40;
+  --nexus-text: #c1c2c5;
+  --nexus-text-bright: #f1f3f5;
+  --nexus-success: #51cf66;
+  --nexus-warning: #ffd43b;
+  --nexus-error: #ff6b6b;
+  --nexus-info: #339af0;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--nexus-bg);
+  color: var(--nexus-text);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--nexus-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #495057;
+}
+
+/* ─── Markdown Rendering ───────────────────────────────────────────────────── */
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+  color: var(--nexus-text-bright);
+  margin-top: 0.75em;
+  margin-bottom: 0.25em;
+}
+
+.markdown-content h1 { font-size: 1.2em; }
+.markdown-content h2 { font-size: 1.1em; }
+.markdown-content h3 { font-size: 1em; }
+
+.markdown-content p {
+  margin: 0.4em 0;
+}
+
+.markdown-content ul, .markdown-content ol {
+  padding-left: 1.2em;
+  margin: 0.3em 0;
+}
+
+.markdown-content code {
+  background: rgba(76, 110, 245, 0.15);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
+}
+
+.markdown-content pre {
+  background: var(--nexus-bg);
+  padding: 0.75em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.markdown-content a {
+  color: var(--nexus-primary);
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 25%,
+    rgba(76, 110, 245, 0.1) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+
+.typing-dot {
+  animation: dot-pulse 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }

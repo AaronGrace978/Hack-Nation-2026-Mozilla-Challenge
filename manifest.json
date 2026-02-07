@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Nexus by BostonAi.io - Universal Web Agent",
+  "version": "1.0.0",
+  "description": "Bring Your Own AI to Every Website. A multi-agent browser companion with permission-first design, layered memory, and consciousness architecture. Built by BostonAi.io.",
+  "author": "BostonAi.io",
+  "homepage_url": "https://bostonai.io",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "sidePanel",
+    "scripting",
+    "offscreen"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidebar.html"
+  },
+  "action": {
+    "default_title": "Open Nexus",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}
