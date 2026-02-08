@@ -37,9 +37,23 @@ export class NavigatorAgent extends BaseAgent {
 
   protected async onExecute(task: SubTask): Promise<TaskResult> {
     const input = task.input as Record<string, unknown>;
-    const action = (input.action as string) ?? 'read_page';
+    let action = (input.action as string) ?? 'read_page';
     const url = input.url as string | undefined;
     const domain = url ? extractDomain(url) : 'current';
+
+    // ── Smart intent detection ─────────────────────────────────────────────
+    // The LLM sometimes generates "click", "navigate", or other actions when
+    // the real intent is to add to cart. Detect this and reroute regardless
+    // of what action the LLM chose.
+    const desc = (task.description ?? '').toLowerCase();
+    const inputDesc = ((input.description ?? '') as string).toLowerCase();
+    const combined = `${desc} ${inputDesc}`;
+    // Permissive match: "add" followed by up to 30 chars then "cart"/"bag"/"basket"
+    const isCartIntent = /add.{0,30}cart|add.{0,30}bag|add.{0,30}basket|buy\s*now/i.test(combined);
+
+    if (isCartIntent && action !== 'add_to_cart') {
+      action = 'add_to_cart';
+    }
 
     this.reportProgress(`Navigator: ${action}`);
 
@@ -56,6 +70,8 @@ export class NavigatorAgent extends BaseAgent {
         return this.scrollPage(input, domain, task.id);
       case 'analyze_page':
         return this.analyzePage(input, domain, task.id);
+      case 'add_to_cart':
+        return this.addToCart(input, domain, task.id);
       default:
         return this.handleWithLLM(task);
     }
@@ -109,11 +125,11 @@ export class NavigatorAgent extends BaseAgent {
       domain,
       `Navigate to ${url}`,
       async () => {
-        // Use browser API to navigate
         if (typeof chrome !== 'undefined' && chrome.tabs) {
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           if (tab?.id) {
             await chrome.tabs.update(tab.id, { url });
+            await this.waitForTabLoad(tab.id, 20000);
           }
         }
         return { navigated: true, url };
@@ -140,6 +156,11 @@ export class NavigatorAgent extends BaseAgent {
   ): Promise<TaskResult> {
     const selector = input.selector as string;
     if (!selector) {
+      // Last-resort fallback: if description suggests cart intent, reroute
+      const clickDesc = ((input.description ?? '') as string).toLowerCase();
+      if (/add.{0,30}cart|add.{0,30}bag|add.{0,30}basket|buy\s*now/i.test(clickDesc)) {
+        return this.addToCart(input, domain, taskId);
+      }
       return { success: false, error: 'No selector provided', confidence: 0 };
     }
 
@@ -198,6 +219,110 @@ export class NavigatorAgent extends BaseAgent {
       data: permResult.result,
       confidence: 0.85,
     };
+  }
+
+  // ── Add to Cart ─────────────────────────────────────────────────────────────
+
+  private async addToCart(
+    input: Record<string, unknown>,
+    domain: string,
+    taskId: string,
+  ): Promise<TaskResult> {
+    const url = input.url as string | undefined;
+    const targetDomain = url ? extractDomain(url) : domain;
+
+    const permResult = await this.withPermission(
+      PermissionLevel.INTERACT,
+      targetDomain,
+      'Add item to cart (find and click Add to Cart button)',
+      async () => {
+        let tabId: number | undefined;
+
+        if (url && typeof chrome !== 'undefined' && chrome.tabs) {
+          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          tabId = tab?.id;
+          if (tabId) {
+            await chrome.tabs.update(tabId, { url });
+            // Wait for the initial page load
+            await this.waitForTabLoad(tabId, 20000);
+            // Retailer pages often do client-side redirects after
+            // the initial "complete" event. Wait, then check for
+            // a second load cycle (redirect).
+            await new Promise((r) => setTimeout(r, 2000));
+            await this.waitForTabLoad(tabId, 5000);
+            // Final hydration wait — React/JS frameworks need time
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+
+        // Retry up to 4 times with increasing delays.
+        // Catches BOTH { success: false } results AND thrown errors
+        // (content script unreachable after navigation/redirect).
+        let lastError = 'Unknown error';
+        const maxRetries = 4;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          try {
+            // Force-inject content script before each attempt (idempotent if already loaded)
+            await this.ensureContentScript(tabId);
+            await new Promise((r) => setTimeout(r, attempt === 0 ? 500 : 1000));
+
+            const result = await this.sendToContent(ExtMessageType.INTERACT_PAGE, {
+              action: 'add_to_cart',
+            } as PageInteraction) as { success?: boolean; error?: string };
+
+            if (result?.success !== false) {
+              return result;
+            }
+
+            lastError = result?.error ?? 'Add to Cart button not found';
+          } catch (err) {
+            lastError = err instanceof Error ? err.message : String(err);
+          }
+
+          // Wait before retry (increasing backoff)
+          if (attempt < maxRetries - 1) {
+            await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+          }
+        }
+
+        return { success: false, error: lastError };
+      },
+    );
+
+    if (!permResult.allowed) {
+      return { success: false, error: permResult.reason, confidence: 0 };
+    }
+
+    const result = permResult.result as { success?: boolean; error?: string };
+    return {
+      success: result?.success !== false,
+      data: permResult.result,
+      confidence: result?.success !== false ? 0.9 : 0,
+      error: result?.error,
+    };
+  }
+
+  // ── Force-inject content script into active tab ────────────────────────────
+
+  private async ensureContentScript(tabId?: number): Promise<void> {
+    if (typeof chrome === 'undefined' || !chrome.scripting) return;
+
+    try {
+      let targetId = tabId;
+      if (!targetId && chrome.tabs) {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        targetId = tab?.id;
+      }
+      if (!targetId) return;
+
+      await chrome.scripting.executeScript({
+        target: { tabId: targetId },
+        files: ['content.js'],
+      });
+    } catch {
+      // May fail on restricted pages (chrome://, about:, etc.) — that's OK
+    }
   }
 
   // ── Scroll ────────────────────────────────────────────────────────────────
@@ -330,6 +455,59 @@ Be precise with CSS selectors. If unsure, first read the page to understand its 
       default:
         return { success: false, error: `Unknown tool: ${name}`, confidence: 0 };
     }
+  }
+
+  // ── Wait for tab to finish loading (so content script is ready) ───────────
+  // Debounces: if a redirect causes another loading cycle within `settleMs`,
+  // waits for that too. This prevents resolving during a client-side redirect.
+
+  private waitForTabLoad(tabId: number, timeoutMs: number, settleMs = 800): Promise<void> {
+    return new Promise((resolve) => {
+      let settleTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (settleTimer) clearTimeout(settleTimer);
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(listener);
+      };
+
+      const scheduleResolve = () => {
+        // Debounce: reset the settle timer each time we get "complete"
+        if (settleTimer) clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => {
+          cleanup();
+          resolve();
+        }, settleMs);
+      };
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, timeoutMs);
+
+      const listener = (
+        id: number,
+        changeInfo: { status?: string },
+      ) => {
+        if (id !== tabId) return;
+        if (changeInfo.status === 'loading') {
+          // A new navigation started (redirect) — cancel any pending resolve
+          if (settleTimer) {
+            clearTimeout(settleTimer);
+            settleTimer = null;
+          }
+        } else if (changeInfo.status === 'complete') {
+          scheduleResolve();
+        }
+      };
+
+      chrome.tabs.onUpdated.addListener(listener);
+      chrome.tabs.get(tabId).then((tab) => {
+        if (tab.status === 'complete') {
+          scheduleResolve();
+        }
+      }).catch(() => {});
+    });
   }
 
   // ── Content Script Communication ──────────────────────────────────────────

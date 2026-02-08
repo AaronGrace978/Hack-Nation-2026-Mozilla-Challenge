@@ -1,5 +1,5 @@
 import { readFullPage, readElement, readSelection } from './reader';
-import { clickElement, typeInElement, scrollPage, selectOption, focusElement } from './actor';
+import { clickElement, typeInElement, scrollPage, selectOption, focusElement, findAndClickAddToCart } from './actor';
 import { highlightForAgent, clearAllHighlights } from './highlighter';
 import { ExtMessageType } from '../shared/messages';
 
@@ -61,6 +61,8 @@ async function handleMessage(msg: { type: string; payload: unknown }): Promise<u
           return selectOption(selector, value);
         case 'focus':
           return focusElement(selector);
+        case 'add_to_cart':
+          return findAndClickAddToCart();
         default:
           return { success: false, error: `Unknown action: ${action}` };
       }

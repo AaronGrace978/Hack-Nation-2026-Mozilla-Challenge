@@ -83,10 +83,44 @@ class MessageRouter {
     // Wire up navigator agent to forward messages to content scripts
     navigatorAgent.setTabMessageHandler(async (msg) => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab?.id) {
-        return chrome.tabs.sendMessage(tab.id, createMessage(msg.type as ExtMessageType, msg.payload));
+      if (!tab?.id) throw new Error('No active tab found');
+
+      const message = createMessage(msg.type as ExtMessageType, msg.payload);
+
+      const send = (tabId: number) =>
+        chrome.tabs.sendMessage(tabId, message);
+
+      const injectAndRetry = async (delayMs: number): Promise<unknown> => {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js'],
+        });
+        await new Promise((r) => setTimeout(r, delayMs));
+        return send(tab.id);
+      };
+
+      try {
+        return await send(tab.id);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const isNoReceiver =
+          /Could not establish connection|Receiving end does not exist/i.test(errMsg);
+        if (!isNoReceiver) throw err;
+
+        // Content script not loaded — inject and retry with short delay so listener is ready
+        try {
+          return await injectAndRetry(400);
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+          const stillNoReceiver =
+            /Could not establish connection|Receiving end does not exist/i.test(retryMsg);
+          if (stillNoReceiver) {
+            await new Promise((r) => setTimeout(r, 800));
+            return await send(tab.id);
+          }
+          throw retryErr;
+        }
       }
-      throw new Error('No active tab found');
     });
 
     // Initialize MCP servers
@@ -315,15 +349,31 @@ class MessageRouter {
 
       // Read page text via content script (keep it lean for speed)
       try {
-        const pageData = await chrome.tabs.sendMessage(
-          tab.id,
-          createMessage(ExtMessageType.READ_PAGE, { type: 'full' }),
-        );
-        if (pageData?.text) {
-          result.text = pageData.text.substring(0, 6000);
+        let pageData: unknown;
+        try {
+          pageData = await chrome.tabs.sendMessage(
+            tab.id,
+            createMessage(ExtMessageType.READ_PAGE, { type: 'full' }),
+          );
+        } catch (readErr) {
+          const msg = readErr instanceof Error ? readErr.message : String(readErr);
+          if (/Could not establish connection|Receiving end does not exist/i.test(msg)) {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['content.js'],
+            });
+            await new Promise((r) => setTimeout(r, 400));
+            pageData = await chrome.tabs.sendMessage(
+              tab.id,
+              createMessage(ExtMessageType.READ_PAGE, { type: 'full' }),
+            );
+          } else throw readErr;
+        }
+        if (pageData && typeof pageData === 'object' && 'text' in pageData && typeof (pageData as { text: string }).text === 'string') {
+          result.text = (pageData as { text: string }).text.substring(0, 6000);
         }
       } catch {
-        // Content script might not be injected (e.g. chrome:// pages)
+        // Content script might not be injectable (e.g. chrome:// pages)
       }
 
       // Screenshot: only capture on demand, not every message (saves ~1-2s)

@@ -358,11 +358,12 @@ For price comparisons, use the standard "compare" action with explicit URLs.`;
         content: `You are the Nexus orchestrator by BostonAi.io. Decompose the user's intent into subtasks for specialist agents.
 
 Available agents:
-- navigator: ONLY for interacting with the user's CURRENT browser tab (read page, click, fill forms, scroll). Actions: read_page, navigate, click, fill, scroll, analyze_page.
+- navigator: ONLY for interacting with the user's CURRENT browser tab (read page, click, fill forms, scroll). Actions: read_page, navigate, click, fill, scroll, analyze_page, add_to_cart.
 - researcher: For fetching data from ANY external URL (extraction, comparison, summarization, search). Actions: extract_markdown, summarize, compare, compare_prices, search. ALWAYS include a "url" or "query" field.
 - memory: For user preferences, browsing history, context recall.
 
 ROUTING RULES (follow strictly):
+- ADD TO CART: If the user wants to add an item to cart (e.g. "add to cart", "add these to my cart") and provides a product URL or is on a product page, create ONE navigator subtask with action "add_to_cart". Include "url" in input when the user provides a product link (e.g. Best Buy, Amazon). Example: { "action": "add_to_cart", "url": "https://www.bestbuy.com/product/..." }. Do NOT create only a "navigate" task — add_to_cart both navigates (if url given) and clicks the Add to Cart button.
 - If the query mentions "this page/site" → use navigator
 - If the query mentions multiple sites, stores, comparing prices, finding the cheapest, or shopping → use researcher with action "compare_prices" (when enabled) or "compare" with real URLs
 - If the query mentions searching the web → use researcher with action "search"
@@ -409,6 +410,10 @@ Respond with ONLY a JSON object in this exact format:
             st.dependencies = st.dependencies ?? [];
             st.input = st.input ?? {};
           }
+          // ── Post-parse action correction ─────────────────────────────
+          // The LLM sometimes chooses "click" or "navigate" when the user
+          // clearly wants to add to cart. Correct it before dispatch.
+          this.correctCartActions(parsed.subtasks, text);
           return parsed;
         }
       } catch {
@@ -418,7 +423,10 @@ Respond with ONLY a JSON object in this exact format:
         if (jsonMatch) {
           try {
             const extracted = JSON.parse(jsonMatch[1]);
-            if (extracted?.subtasks?.length) return extracted;
+            if (extracted?.subtasks?.length) {
+              this.correctCartActions(extracted.subtasks, text);
+              return extracted;
+            }
           } catch { /* give up */ }
         }
       }
@@ -448,6 +456,77 @@ Respond with ONLY a JSON object in this exact format:
       }],
       summary: `Looking into: ${text}`,
     };
+  }
+
+  // ── Post-parse: correct subtask actions the LLM got wrong ───────────────
+  // The LLM sometimes generates "click" or "navigate" when the user's intent
+  // is clearly "add to cart". This catches those cases at the source.
+
+  private correctCartActions(
+    subtasks: { description: string; agent: string; input: Record<string, unknown> }[],
+    userText: string,
+  ): void {
+    const userLower = userText.toLowerCase();
+    const userWantsCart = /add.{0,30}cart|add.{0,30}bag|add.{0,30}basket/i.test(userLower);
+
+    // Extract URL from user's message as fallback (LLM sometimes omits it)
+    const urlMatch = userText.match(/https?:\/\/[^\s<>"']+/i);
+    const userUrl = urlMatch?.[0];
+
+    // First pass: find URLs and correct actions
+    let cartUrl: string | undefined;
+    let cartTaskCount = 0;
+
+    for (const st of subtasks) {
+      if (st.agent !== 'navigator') continue;
+
+      const action = (st.input?.action as string) ?? '';
+      const stDesc = (st.description ?? '').toLowerCase();
+      const stDescWantsCart = /add.{0,30}cart|add.{0,30}bag|add.{0,30}basket/i.test(stDesc);
+
+      // Grab the URL from navigate tasks (LLM often separates navigate + click)
+      if (action === 'navigate' && st.input?.url) {
+        cartUrl = st.input.url as string;
+      }
+
+      if (action === 'add_to_cart') {
+        cartTaskCount++;
+        continue; // Already correct
+      }
+
+      // Correct if EITHER the user's message or the subtask description indicates cart intent
+      if (stDescWantsCart || userWantsCart) {
+        st.input.action = 'add_to_cart';
+        cartTaskCount++;
+      }
+    }
+
+    // Second pass: if the LLM split into navigate + click (now both add_to_cart),
+    // collapse to a single task and ensure the URL is on it.
+    if (cartTaskCount > 1) {
+      let kept = false;
+      for (let i = subtasks.length - 1; i >= 0; i--) {
+        const st = subtasks[i];
+        if (st.agent === 'navigator' && st.input?.action === 'add_to_cart') {
+          if (!kept) {
+            // Keep this one, ensure it has the URL
+            if (cartUrl && !st.input.url) st.input.url = cartUrl;
+            kept = true;
+          } else {
+            // Remove duplicate
+            subtasks.splice(i, 1);
+          }
+        }
+      }
+    } else if (cartTaskCount === 1) {
+      // Ensure the single cart task has the URL
+      const cartTask = subtasks.find(
+        (st) => st.agent === 'navigator' && st.input?.action === 'add_to_cart',
+      );
+      if (cartTask && !cartTask.input.url) {
+        cartTask.input.url = cartUrl ?? userUrl;
+      }
+    }
   }
 
   // ── Fast Path: Answer directly from page context ─────────────────────────

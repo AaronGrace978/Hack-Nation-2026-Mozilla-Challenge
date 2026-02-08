@@ -84,7 +84,7 @@ export interface PageContent {
 }
 
 export interface PageInteraction {
-  action: 'click' | 'type' | 'scroll' | 'select' | 'focus';
+  action: 'click' | 'type' | 'scroll' | 'select' | 'focus' | 'add_to_cart';
   selector?: string;
   value?: string;
   coordinates?: { x: number; y: number };

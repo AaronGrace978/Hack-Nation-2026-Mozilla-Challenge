@@ -113,3 +113,124 @@ export function focusElement(selector: string): InteractionResult {
     return { success: false, action: 'focus', target: selector, error: String(err) };
   }
 }
+
+// ─── Add to Cart (find by text, then click) ───────────────────────────────────
+
+const ADD_TO_CART_PATTERNS = [
+  /add\s+to\s+cart/i,
+  /add\s+to\s+bag/i,
+  /add\s+to\s+basket/i,
+  /buy\s+now/i,
+  /add\s+to\s+cart\s*$/i,
+  /add\s+item/i,
+];
+
+function isAddToCartLike(el: Element): boolean {
+  const text = (el.textContent ?? '').trim();
+  const value = (el as HTMLInputElement).value?.trim?.() ?? '';
+  const label = (el.getAttribute('aria-label') ?? '').trim();
+  const title = (el.getAttribute('title') ?? '').trim();
+  // Also check data-* attributes that retailers use for button state
+  const dataState = (el.getAttribute('data-button-state') ?? '').trim();
+  const combined = [text, value, label, title, dataState].join(' ');
+  return ADD_TO_CART_PATTERNS.some((p) => p.test(combined));
+}
+
+function isVisible(el: Element): boolean {
+  const style = window.getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+// Deduplicate candidates (same element may match multiple selectors)
+function dedup(elements: Element[]): Element[] {
+  const seen = new Set<Element>();
+  return elements.filter((el) => {
+    if (seen.has(el)) return false;
+    seen.add(el);
+    return true;
+  });
+}
+
+export function findAndClickAddToCart(): InteractionResult {
+  const candidates: Element[] = [];
+
+  // ── Phase 1: Data-attribute / class selectors (most reliable, site-specific) ──
+  // Use case-insensitive attribute selectors where possible.
+  // CSS attribute selectors are case-sensitive by default; we use the `i` flag.
+  const dataSelectors = [
+    // Best Buy
+    '[data-button-state="ADD_TO_CART" i]',
+    '[data-button-state="add-to-cart" i]',
+    '[data-sku-id][data-button-state]',
+    '.fulfillment-add-to-cart-button button',
+    '.fulfillment-add-to-cart-button',
+    '[data-lid="huc-add-to-cart"]',
+    // Amazon
+    '#add-to-cart-button',
+    'input[name="submit.add-to-cart"]',
+    '#buyNow',
+    // Walmart
+    '[data-testid="add-to-cart"]',
+    'button[data-automation-id="atc"]',
+    // Target
+    '[data-test="orderPickupButton"]',
+    '[data-test="shipItButton"]',
+    // Generic / common patterns
+    '.add-to-cart-button',
+    '.add-to-cart-btn',
+    '#add-to-cart',
+    '[class*="addToCart"]',
+    '[class*="add-to-cart"]',
+    '[class*="AddToCart"]',
+    '[data-testid*="add-to-cart" i]',
+    '[data-testid*="addToCart"]',
+  ];
+
+  for (const sel of dataSelectors) {
+    try {
+      document.querySelectorAll(sel).forEach((el) => {
+        if (isVisible(el)) candidates.push(el);
+      });
+    } catch {
+      // Some browsers don't support the `i` flag in attribute selectors — skip
+    }
+  }
+
+  // ── Phase 2: Text-based matching on interactive elements ──────────────────
+  document.querySelectorAll('button, input[type="submit"], [role="button"], a[href]').forEach((el) => {
+    if (isAddToCartLike(el) && isVisible(el)) candidates.push(el);
+  });
+
+  // ── Phase 3: Deep search — spans/divs inside buttons that hold the text ────
+  // Sometimes the button itself has no text, but a child span does.
+  document.querySelectorAll('button span, button div, [role="button"] span').forEach((span) => {
+    if (isAddToCartLike(span) && isVisible(span)) {
+      // Push the parent button, not the span
+      const btn = span.closest('button, [role="button"]');
+      if (btn && isVisible(btn)) candidates.push(btn);
+    }
+  });
+
+  const unique = dedup(candidates);
+
+  // Prefer first visible match (main CTA is usually first in DOM order)
+  const toClick = unique[0];
+  if (!toClick) {
+    return { success: false, action: 'add_to_cart', target: 'Add to Cart', error: 'No Add to Cart button found on this page' };
+  }
+
+  toClick.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Use both .click() and dispatchEvent for maximum compatibility
+  // (some React sites intercept native click, others need the event)
+  try {
+    (toClick as HTMLElement).click();
+  } catch {
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+    toClick.dispatchEvent(event);
+  }
+
+  return { success: true, action: 'add_to_cart', target: (toClick.textContent ?? '').trim().substring(0, 50) };
+}
