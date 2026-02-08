@@ -36,8 +36,127 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 class MessageRouter {
   private chatHistory: ChatMessagePayload[] = [];
   private sidebarPort: chrome.runtime.Port | null = null;
+  private _initialized = false;
+  private _initPromise: Promise<void> | null = null;
+
+  // ── Pending Permissions ─────────────────────────────────────────────────
+
+  private _pendingPermissions: Map<
+    string,
+    (result: { approved: boolean; duration?: number; singleUse?: boolean }) => void
+  > = new Map();
+
+  // ── Synchronous Listener Registration ───────────────────────────────────
+  // CRITICAL: Must be called in the first synchronous turn of the service
+  // worker script. Chrome MV3 drops events whose listeners are registered
+  // inside async callbacks (after await / .then()). This was the root cause
+  // of the sidebar never receiving chat responses.
+
+  registerListeners(): void {
+    // Wire up navigator agent to forward messages to content scripts
+    navigatorAgent.setTabMessageHandler(async (msg) => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) throw new Error('No active tab found');
+
+      const activeTabId = tab.id;
+      const message = createMessage(msg.type as ExtMessageType, msg.payload);
+
+      const send = (tabId: number) =>
+        chrome.tabs.sendMessage(tabId, message);
+
+      const injectAndRetry = async (delayMs: number): Promise<unknown> => {
+        await chrome.scripting.executeScript({
+          target: { tabId: activeTabId },
+          files: ['content.js'],
+        });
+        await new Promise((r) => setTimeout(r, delayMs));
+        return send(activeTabId);
+      };
+
+      try {
+        return await send(activeTabId);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const isNoReceiver =
+          /Could not establish connection|Receiving end does not exist/i.test(errMsg);
+        if (!isNoReceiver) throw err;
+
+        // Content script not loaded — inject and retry
+        try {
+          return await injectAndRetry(400);
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+          const stillNoReceiver =
+            /Could not establish connection|Receiving end does not exist/i.test(retryMsg);
+          if (stillNoReceiver) {
+            await new Promise((r) => setTimeout(r, 800));
+            return await send(activeTabId);
+          }
+          throw retryErr;
+        }
+      }
+    });
+
+    // Set up orchestrator callbacks
+    orchestrator.setCallbacks({
+      onWorkflowUpdate: (workflow) => this.sendToSidebar(ExtMessageType.WORKFLOW_UPDATE, workflow),
+      onAgentActivity: (activity) => this.sendToSidebar(ExtMessageType.AGENT_ACTIVITY, activity),
+      onChatMessage: (msg) => {
+        const chatMsg: ChatMessagePayload = {
+          id: generateId('chat'),
+          role: msg.role as ChatMessagePayload['role'],
+          content: msg.content,
+          agentRole: msg.agentRole,
+          timestamp: Date.now(),
+        };
+        this.chatHistory.push(chatMsg);
+        this.persistChat();
+        this.sendToSidebar(ExtMessageType.CHAT_MESSAGE, chatMsg);
+      },
+      onPermissionRequest: (escalation) => {
+        this.sendToSidebar(ExtMessageType.PERMISSION_REQUEST, escalation);
+      },
+    });
+
+    // Set up permission escalation handler
+    permissionManager.setEscalationHandler(async (escalation: PermissionEscalation) => {
+      return new Promise((resolve) => {
+        this._pendingPermissions.set(escalation.requestId, resolve);
+        this.sendToSidebar(ExtMessageType.PERMISSION_REQUEST, escalation);
+      });
+    });
+
+    // Listen for sidebar connections
+    chrome.runtime.onConnect.addListener((port) => {
+      if (port.name === 'nexus-sidebar') {
+        this.sidebarPort = port;
+        port.onMessage.addListener((msg) => this.handleSidebarMessage(msg));
+        port.onDisconnect.addListener(() => {
+          this.sidebarPort = null;
+        });
+
+        // Send initial state (chat history may still be loading)
+        this.sendStateSync();
+      }
+    });
+
+    // Listen for content script messages
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      this.handleContentMessage(msg, sender, sendResponse);
+      return true; // Keep channel open for async response
+    });
+  }
+
+  // ── Async Initialization ────────────────────────────────────────────────
+  // Loads settings, configures LLM/MCP, restores chat history.
+  // Called after registerListeners() — safe to run asynchronously.
 
   async initialize(): Promise<void> {
+    this._initPromise = this._doInitialize();
+    await this._initPromise;
+  }
+
+  private async _doInitialize(): Promise<void> {
     // Restore chat history from session storage (survives sidebar reloads)
     try {
       const stored = await chrome.storage.session.get('nexus_chat_history');
@@ -80,116 +199,27 @@ class MessageRouter {
       researcherAgent.setTabstackApiKey(tabstackKey);
     }
 
-    // Wire up navigator agent to forward messages to content scripts
-    navigatorAgent.setTabMessageHandler(async (msg) => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) throw new Error('No active tab found');
-
-      const activeTabId = tab.id; // capture for closures (TS narrowing)
-      const message = createMessage(msg.type as ExtMessageType, msg.payload);
-
-      const send = (tabId: number) =>
-        chrome.tabs.sendMessage(tabId, message);
-
-      const injectAndRetry = async (delayMs: number): Promise<unknown> => {
-        await chrome.scripting.executeScript({
-          target: { tabId: activeTabId },
-          files: ['content.js'],
-        });
-        await new Promise((r) => setTimeout(r, delayMs));
-        return send(activeTabId);
-      };
-
-      try {
-        return await send(activeTabId);
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        const isNoReceiver =
-          /Could not establish connection|Receiving end does not exist/i.test(errMsg);
-        if (!isNoReceiver) throw err;
-
-        // Content script not loaded — inject and retry with short delay so listener is ready
-        try {
-          return await injectAndRetry(400);
-        } catch (retryErr) {
-          const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
-          const stillNoReceiver =
-            /Could not establish connection|Receiving end does not exist/i.test(retryMsg);
-          if (stillNoReceiver) {
-            await new Promise((r) => setTimeout(r, 800));
-            return await send(activeTabId);
-          }
-          throw retryErr;
-        }
-      }
-    });
-
     // Initialize MCP servers
     await mcpRegistry.initialize();
 
-    // Set up orchestrator callbacks
-    orchestrator.setCallbacks({
-      onWorkflowUpdate: (workflow) => this.sendToSidebar(ExtMessageType.WORKFLOW_UPDATE, workflow),
-      onAgentActivity: (activity) => this.sendToSidebar(ExtMessageType.AGENT_ACTIVITY, activity),
-      onChatMessage: (msg) => {
-        const chatMsg: ChatMessagePayload = {
-          id: generateId('chat'),
-          role: msg.role as ChatMessagePayload['role'],
-          content: msg.content,
-          agentRole: msg.agentRole,
-          timestamp: Date.now(),
-        };
-        this.chatHistory.push(chatMsg);
-        this.persistChat();
-        this.sendToSidebar(ExtMessageType.CHAT_MESSAGE, chatMsg);
-      },
-      onPermissionRequest: (escalation) => {
-        this.sendToSidebar(ExtMessageType.PERMISSION_REQUEST, escalation);
-      },
-    });
+    this._initialized = true;
 
-    // Set up permission escalation handler
-    permissionManager.setEscalationHandler(async (escalation: PermissionEscalation) => {
-      return new Promise((resolve) => {
-        // Store the resolve callback to call when user responds
-        this._pendingPermissions.set(escalation.requestId, resolve);
-        this.sendToSidebar(ExtMessageType.PERMISSION_REQUEST, escalation);
-      });
-    });
-
-    // Listen for sidebar connections
-    chrome.runtime.onConnect.addListener((port) => {
-      if (port.name === 'nexus-sidebar') {
-        this.sidebarPort = port;
-        port.onMessage.addListener((msg) => this.handleSidebarMessage(msg));
-        port.onDisconnect.addListener(() => {
-          this.sidebarPort = null;
-        });
-
-        // Send initial state
-        this.sendStateSync();
-      }
-    });
-
-    // Listen for content script messages
-    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-      this.handleContentMessage(msg, sender, sendResponse);
-      return true; // Keep channel open for async response
-    });
+    // Re-send state sync now that chat history is fully loaded
+    if (this.sidebarPort) {
+      this.sendStateSync();
+    }
   }
 
-  // ── Pending Permissions ───────────────────────────────────────────────────
-
-  private _pendingPermissions: Map<
-    string,
-    (result: { approved: boolean; duration?: number; singleUse?: boolean }) => void
-  > = new Map();
-
-  // ── Sidebar Message Handling ──────────────────────────────────────────────
+  // ── Sidebar Message Handling ────────────────────────────────────────────
 
   private async handleSidebarMessage(msg: ExtMessage): Promise<void> {
     switch (msg.type) {
       case ExtMessageType.USER_INPUT: {
+        // Wait for async initialization (LLM config, settings) before processing
+        if (!this._initialized && this._initPromise) {
+          await this._initPromise;
+        }
+
         const payload = msg.payload as UserInputPayload;
 
         // Deduplicate rapid-fire messages (voice input can spam)
@@ -299,12 +329,16 @@ class MessageRouter {
       }
 
       case ExtMessageType.GET_STATE:
+        // Wait for init so we can send full chat history
+        if (!this._initialized && this._initPromise) {
+          await this._initPromise;
+        }
         this.sendStateSync();
         break;
     }
   }
 
-  // ── Content Script Message Handling ────────────────────────────────────────
+  // ── Content Script Message Handling ────────────────────────────────────
 
   private handleContentMessage(
     msg: ExtMessage,
@@ -323,7 +357,7 @@ class MessageRouter {
     }
   }
 
-  // ── BostonAi.io: Auto Page Context + Vision ──────────────────────────────
+  // ── BostonAi.io: Auto Page Context + Vision ──────────────────────────
 
   private async captureCurrentPage(): Promise<{
     url: string;
@@ -378,7 +412,6 @@ class MessageRouter {
       }
 
       // Screenshot: only capture on demand, not every message (saves ~1-2s)
-      // Vision is available via the fast path when needed
     } catch {
       // Tab query failed
     }
@@ -386,7 +419,7 @@ class MessageRouter {
     return result;
   }
 
-  // ── Persist Chat History ──────────────────────────────────────────────────
+  // ── Persist Chat History ────────────────────────────────────────────────
 
   private persistChat(): void {
     try {
@@ -398,7 +431,7 @@ class MessageRouter {
     }
   }
 
-  // ── Send to Sidebar ───────────────────────────────────────────────────────
+  // ── Send to Sidebar ─────────────────────────────────────────────────────
 
   private sendToSidebar(type: ExtMessageType, payload: unknown): void {
     if (this.sidebarPort) {
@@ -411,7 +444,7 @@ class MessageRouter {
     }
   }
 
-  // ── State Sync ────────────────────────────────────────────────────────────
+  // ── State Sync ──────────────────────────────────────────────────────────
 
   private sendStateSync(): void {
     const state: StateSync = {

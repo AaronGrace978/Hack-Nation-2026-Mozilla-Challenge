@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — Pitch Deck</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-dim: #8888a0;
+    --accent: #7c5cfc;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --blue: #60a5fa;
+    --slide-w: 100vw;
+    --slide-h: 100vh;
+  }
+
+  html { scroll-behavior: smooth; scroll-snap-type: y mandatory; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* ── Slides ───────────────────────────────── */
+  .slide {
+    width: var(--slide-w);
+    min-height: var(--slide-h);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    scroll-snap-align: start;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at center, rgba(124,92,252,0.03) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── Navigation ─────────────────────────────── */
+  .nav-dots {
+    position: fixed;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 100;
+  }
+  .nav-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .nav-dot:hover, .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+
+  /* ── Slide counter ──────────────────────────── */
+  .slide-num {
+    position: absolute;
+    bottom: 30px; right: 40px;
+    font-size: 14px;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 2px;
+  }
+
+  /* ── Typography ─────────────────────────────── */
+  .mega { font-size: clamp(48px, 7vw, 96px); font-weight: 900; line-height: 1.05; letter-spacing: -2px; }
+  .big { font-size: clamp(36px, 4vw, 64px); font-weight: 800; line-height: 1.15; letter-spacing: -1px; }
+  .mid { font-size: clamp(24px, 2.5vw, 40px); font-weight: 600; line-height: 1.3; }
+  .body { font-size: clamp(18px, 1.5vw, 24px); font-weight: 400; line-height: 1.7; color: var(--text-dim); }
+  .label {
+    font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--accent2); margin-bottom: 16px;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--pink) 50%, var(--orange) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .accent-text { color: var(--accent2); }
+
+  /* ── Layout helpers ─────────────────────────── */
+  .center { text-align: center; }
+  .left { text-align: left; align-items: flex-start; }
+  .max-w { max-width: 1100px; width: 100%; }
+  .gap-sm { gap: 12px; }
+  .gap-md { gap: 24px; }
+  .gap-lg { gap: 40px; }
+  .flex-col { display: flex; flex-direction: column; }
+  .flex-row { display: flex; flex-direction: row; flex-wrap: wrap; }
+  .mt-sm { margin-top: 16px; }
+  .mt-md { margin-top: 32px; }
+  .mt-lg { margin-top: 48px; }
+
+  /* ── Cards ──────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    transition: all 0.3s;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+  .card-icon {
+    font-size: 36px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .card p {
+    font-size: 16px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* ── Grid ───────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr; }
+    .slide { padding: 40px 32px; }
+  }
+
+  /* ── Diagrams / Flow ────────────────────────── */
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 28px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+    position: relative;
+  }
+  .flow-box.accent-border { border-color: var(--accent); box-shadow: 0 0 20px rgba(124,92,252,0.15); }
+  .flow-box .sub { font-size: 13px; color: var(--text-dim); font-weight: 400; margin-top: 4px; }
+
+  .flow-arrow {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: var(--accent2);
+  }
+
+  /* ── Permission levels ──────────────────────── */
+  .perm-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 15px;
+    border: 1px solid;
+  }
+
+  .perm-1 { border-color: #34d399; color: #34d399; background: rgba(52,211,153,0.08); }
+  .perm-2 { border-color: #60a5fa; color: #60a5fa; background: rgba(96,165,250,0.08); }
+  .perm-3 { border-color: #fb923c; color: #fb923c; background: rgba(251,146,60,0.08); }
+  .perm-4 { border-color: #f472b6; color: #f472b6; background: rgba(244,114,182,0.08); }
+  .perm-5 { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.08); }
+
+  /* ── Won't-do ───────────────────────────────── */
+  .wont-do {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 24px;
+    background: rgba(239,68,68,0.06);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 500;
+  }
+  .wont-do .x { color: #ef4444; font-weight: 800; font-size: 20px; }
+
+  /* ── Demo box ───────────────────────────────── */
+  .demo-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 18px;
+    line-height: 2;
+    max-width: 700px;
+    width: 100%;
+  }
+  .demo-box .user { color: var(--green); }
+  .demo-box .agent { color: var(--accent2); }
+  .demo-box .dim { color: var(--text-dim); }
+
+  /* ── Stat ────────────────────────────────────── */
+  .stat-num {
+    font-size: clamp(48px, 5vw, 72px);
+    font-weight: 900;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    font-weight: 500;
+  }
+
+  /* ── Built by ───────────────────────────────── */
+  .built-by {
+    font-size: clamp(20px, 2vw, 28px);
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+  .built-by strong { color: var(--text); }
+
+  /* ── Keyboard hint ──────────────────────────── */
+  .key-hint {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: var(--text-dim);
+    opacity: 0.5;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* ── Animations ─────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .slide > * { animation: fadeUp 0.6s ease-out both; }
+  .slide > *:nth-child(2) { animation-delay: 0.1s; }
+  .slide > *:nth-child(3) { animation-delay: 0.2s; }
+  .slide > *:nth-child(4) { animation-delay: 0.3s; }
+</style>
+</head>
+<body>
+
+<!-- Nav dots -->
+<nav class="nav-dots" id="navDots"></nav>
+<div class="key-hint">Scroll or use arrow keys to navigate</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 1 — Title -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s1">
+  <div class="label">Hack-Nation 2026 &middot; Mozilla Challenge</div>
+  <h1 class="mega gradient-text">Nexus</h1>
+  <p class="mid mt-sm" style="color:var(--text-dim); font-weight:400;">The Universal Web Agent</p>
+  <p class="body mt-md" style="max-width:650px;">
+    Bring Your Own AI to Every Website.<br>
+    A permission-first, multi-agent browser extension.
+  </p>
+  <div class="built-by mt-lg">Built by <strong>Aaron Grace</strong> &mdash; <strong>BostonAi.io</strong></div>
+  <span class="slide-num">01 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 2 — The Problem -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s2">
+  <div class="label">The Problem</div>
+  <h2 class="big">AI is trapped inside chat windows.</h2>
+  <div class="grid-3 mt-lg max-w" style="max-width:900px;">
+    <div class="card center">
+      <span class="card-icon">🔒</span>
+      <h3>Siloed</h3>
+      <p>Each AI tool only works on one platform. No cross-site intelligence.</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon">🙈</span>
+      <h3>Blind</h3>
+      <p>AI can't see or interact with the page you're actually on.</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon">🎰</span>
+      <h3>Uncontrolled</h3>
+      <p>No permission model. No audit trail. Users don't know what the AI did.</p>
+    </div>
+  </div>
+  <span class="slide-num">02 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 3 — The Solution -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s3">
+  <div class="label">The Solution</div>
+  <h2 class="big">A portable AI companion<br>for <span class="gradient-text">every</span> website.</h2>
+  <p class="body mt-md" style="max-width:700px;">
+    Nexus lives in your browser sidebar. An <strong style="color:var(--accent2);">Orchestrator</strong> turns your words into a plan and coordinates specialist agents. It reads pages, clicks buttons, compares prices across sites, remembers your preferences &mdash; all with explicit, scoped, time-bounded permissions.
+  </p>
+  <div class="flex-row gap-md mt-lg" style="justify-content:center;">
+    <div class="perm-badge perm-1">BYOK &mdash; Your Keys, Your Data</div>
+    <div class="perm-badge perm-2">Works on Any Site</div>
+    <div class="perm-badge perm-3">Chrome + Firefox MV3</div>
+  </div>
+  <span class="slide-num">03 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 4 — How It Works (simple) -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s4">
+  <div class="label">How It Works</div>
+  <h2 class="big">Four steps. That's it.</h2>
+  <div class="max-w mt-lg" style="max-width:820px;">
+
+    <!-- Step 1 -->
+    <div style="display:flex; align-items:flex-start; gap:24px; margin-bottom:32px;">
+      <div style="min-width:56px; height:56px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; color:#fff; flex-shrink:0;">1</div>
+      <div style="text-align:left;">
+        <h3 style="font-size:22px; font-weight:700; margin-bottom:4px;">You talk to Nexus</h3>
+        <p style="color:var(--text-dim); font-size:18px; line-height:1.6;">Type or speak a request in the sidebar. <em>"Add these AirPods to my cart"</em> or <em>"Find the cheapest RTX 5080."</em></p>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div style="display:flex; align-items:flex-start; gap:24px; margin-bottom:32px;">
+      <div style="min-width:56px; height:56px; border-radius:50%; background:var(--pink); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; color:#fff; flex-shrink:0;">2</div>
+      <div style="text-align:left;">
+        <h3 style="font-size:22px; font-weight:700; margin-bottom:4px;">The Orchestrator breaks it down</h3>
+        <p style="color:var(--text-dim); font-size:18px; line-height:1.6;">Your request is sent to an LLM that figures out <strong style="color:var(--text);">what needs to happen</strong> and <strong style="color:var(--text);">which agents</strong> should do it. No code, no selectors &mdash; just plain language in, structured plan out.</p>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div style="display:flex; align-items:flex-start; gap:24px; margin-bottom:32px;">
+      <div style="min-width:56px; height:56px; border-radius:50%; background:var(--orange); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; color:#fff; flex-shrink:0;">3</div>
+      <div style="text-align:left;">
+        <h3 style="font-size:22px; font-weight:700; margin-bottom:4px;">Specialist agents do the work</h3>
+        <p style="color:var(--text-dim); font-size:18px; line-height:1.6;">The <strong style="color:var(--text);">Navigator</strong> reads pages and clicks buttons. The <strong style="color:var(--text);">Researcher</strong> searches multiple sites in parallel. The <strong style="color:var(--text);">Memory</strong> agent remembers what you like. The <strong style="color:var(--text);">Guardian</strong> asks permission before anything risky.</p>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div style="display:flex; align-items:flex-start; gap:24px;">
+      <div style="min-width:56px; height:56px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; color:#fff; flex-shrink:0;">4</div>
+      <div style="text-align:left;">
+        <h3 style="font-size:22px; font-weight:700; margin-bottom:4px;">You get a clear answer</h3>
+        <p style="color:var(--text-dim); font-size:18px; line-height:1.6;">Results are merged and presented in the sidebar. Every action the AI took is logged in the Activity tab &mdash; nothing happens behind your back.</p>
+      </div>
+    </div>
+
+  </div>
+  <span class="slide-num">04 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 5 — Demo Flow -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s5">
+  <div class="label">In Action</div>
+  <h2 class="big">One command. Five agents.</h2>
+  <div class="demo-box mt-lg center">
+    <div><span class="user">You:</span> "Find the cheapest RTX 5080"</div>
+    <div class="dim" style="font-size:14px; margin: 8px 0;">&#8595; Orchestrator decomposes &rarr; Researcher dispatches to 6 sites in parallel</div>
+    <div><span class="agent">Nexus:</span> "Best price: $899 at Newegg. $949 at Best Buy. $979 on Amazon."</div>
+    <div class="dim" style="font-size:14px; margin: 8px 0;">&#8595; One click to add to cart</div>
+    <div><span class="agent">Nexus:</span> "Added to your Newegg cart. &check;"</div>
+  </div>
+  <p class="body mt-md">Voice input &bull; Cross-site extraction &bull; Add to cart &bull; All permission-gated.</p>
+  <span class="slide-num">05 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 6 — Architecture -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s6">
+  <div class="label">Architecture</div>
+  <h2 class="big">Multi-Agent Orchestration</h2>
+  <p class="body mt-sm" style="max-width:600px;">The <strong style="color:var(--accent2);">Orchestrator</strong> is the brain: it decomposes your intent and delegates to specialist agents.</p>
+  <div class="max-w mt-lg" style="max-width:900px;">
+    <div class="flex-row gap-md" style="justify-content:center; margin-bottom:20px;">
+      <div class="flow-box" style="flex:1;">&#x1F399; Voice / Text Input</div>
+    </div>
+    <div class="flow-arrow">&#x2193;</div>
+    <div class="flex-row gap-md" style="justify-content:center; margin:12px 0;">
+      <div class="flow-box accent-border" style="flex:1;">
+        <strong>Orchestrator</strong>
+        <div class="sub">Intent decomposition &bull; Task dispatch &bull; Result synthesis</div>
+      </div>
+    </div>
+    <div class="flow-arrow">&#x2193;</div>
+    <div class="grid-4 mt-sm">
+      <div class="flow-box">
+        <strong>&#x1F9ED; Navigator</strong>
+        <div class="sub">Page reading, clicks, forms, add-to-cart</div>
+      </div>
+      <div class="flow-box">
+        <strong>&#x1F50D; Researcher</strong>
+        <div class="sub">Cross-site extraction, price comparison</div>
+      </div>
+      <div class="flow-box">
+        <strong>&#x1F9E0; Memory</strong>
+        <div class="sub">Preferences, history, context recall</div>
+      </div>
+      <div class="flow-box">
+        <strong>&#x1F6E1; Guardian</strong>
+        <div class="sub">Permissions, audit, escalation</div>
+      </div>
+    </div>
+  </div>
+  <span class="slide-num">06 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 7 — Permission System -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s7">
+  <div class="label">Key Differentiator</div>
+  <h2 class="big">Permission-First Design</h2>
+  <p class="body mt-sm" style="max-width:650px;">
+    Every action requires explicit, scoped, time-bounded permission.<br>
+    The user is <strong style="color:var(--text);">always</strong> in control.
+  </p>
+  <div class="flex-col gap-sm mt-lg max-w" style="max-width:600px;">
+    <div class="flex-row gap-sm" style="justify-content:center; flex-wrap:wrap;">
+      <span class="perm-badge perm-1">&#x1F7E2; READ_ONLY</span>
+      <span class="perm-badge perm-2">&#x1F535; NAVIGATE</span>
+      <span class="perm-badge perm-3">&#x1F7E0; INTERACT</span>
+      <span class="perm-badge perm-4">&#x1F7E3; SUBMIT</span>
+      <span class="perm-badge perm-5">&#x1F534; PURCHASE</span>
+    </div>
+  </div>
+  <div class="flex-col gap-sm mt-lg max-w" style="max-width:550px;">
+    <div class="wont-do"><span class="x">&#x2715;</span> Auto-submit payments</div>
+    <div class="wont-do"><span class="x">&#x2715;</span> Access passwords or credentials</div>
+    <div class="wont-do"><span class="x">&#x2715;</span> Modify security settings</div>
+  </div>
+  <p class="body mt-md">Full audit trail. Every action logged and inspectable.</p>
+  <span class="slide-num">07 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 8 — Features -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s8">
+  <div class="label">Features</div>
+  <h2 class="big">What Nexus Can Do</h2>
+  <div class="grid-2 mt-lg max-w" style="max-width:900px;">
+    <div class="card">
+      <span class="card-icon">&#x1F4AC;</span>
+      <h3>Chat With Any Page</h3>
+      <p>Ask questions about the page you're on. Get instant answers from page content.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#x1F4B0;</span>
+      <h3>Cross-Site Price Comparison</h3>
+      <p>Search Amazon, Walmart, Best Buy, Target, and more in parallel. One query, ranked results.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#x1F399;</span>
+      <h3>Voice Navigation</h3>
+      <p>Hands-free browsing via Web Speech API. Just talk to your browser.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#x1F504;</span>
+      <h3>Cross-Site Workflows</h3>
+      <p>"Find flights, check calendar, draft email" &mdash; one command, multiple sites.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#x1F511;</span>
+      <h3>BYOK (Bring Your Own Key)</h3>
+      <p>OpenAI, Anthropic, or Ollama. Your keys, your data. Local or cloud.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#x1F6E1;</span>
+      <h3>Guardian Agent</h3>
+      <p>Permission enforcement, escalation prompts, won't-do list, full audit trail.</p>
+    </div>
+  </div>
+  <span class="slide-num">08 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 9 — Tech Stack -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s9">
+  <div class="label">Tech Stack</div>
+  <h2 class="big">Built With</h2>
+  <div class="grid-4 mt-lg max-w" style="max-width:900px;">
+    <div class="card center">
+      <span class="card-icon" style="font-size:28px;">&#x1F4DD;</span>
+      <h3>TypeScript</h3>
+      <p>End-to-end type safety</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon" style="font-size:28px;">&#x269B;</span>
+      <h3>React 18</h3>
+      <p>+ Tailwind CSS</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon" style="font-size:28px;">&#x26A1;</span>
+      <h3>Vite 6</h3>
+      <p>Lightning-fast builds</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon" style="font-size:28px;">&#x1F50C;</span>
+      <h3>MCP</h3>
+      <p>Model Context Protocol</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon" style="font-size:28px;">&#x1F4E6;</span>
+      <h3>Tabstack SDK</h3>
+      <p>Web extraction</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon" style="font-size:28px;">&#x1F4BE;</span>
+      <h3>IndexedDB</h3>
+      <p>Local memory store</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon" style="font-size:28px;">&#x1F399;</span>
+      <h3>Web Speech</h3>
+      <p>Voice input API</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon" style="font-size:28px;">&#x1F9E9;</span>
+      <h3>MV3 Extension</h3>
+      <p>Chrome + Firefox</p>
+    </div>
+  </div>
+  <span class="slide-num">09 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 10 — Why Mozilla -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s10">
+  <div class="label">Mozilla Alignment</div>
+  <h2 class="big">Why This Matters</h2>
+  <div class="grid-3 mt-lg max-w" style="max-width:950px;">
+    <div class="card center">
+      <span class="card-icon">&#x1F310;</span>
+      <h3>Open Web</h3>
+      <p>Works on any website. Not locked to one platform or vendor. Standards-based MV3 extension.</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon">&#x1F464;</span>
+      <h3>User Agency</h3>
+      <p>BYOK means your AI, your keys, your data. No vendor lock-in. Local LLM support via Ollama.</p>
+    </div>
+    <div class="card center">
+      <span class="card-icon">&#x1F512;</span>
+      <h3>Transparency</h3>
+      <p>Every action is permission-gated, time-bounded, and logged. The user sees everything the AI does.</p>
+    </div>
+  </div>
+  <p class="body mt-lg" style="max-width:700px; font-size:20px;">
+    Nexus proves that <strong style="color:var(--text)">powerful AI agents</strong> and
+    <strong style="color:var(--text)">user trust</strong> aren't trade-offs &mdash;
+    they're <span class="gradient-text" style="font-weight:700;">multipliers</span>.
+  </p>
+  <span class="slide-num">10 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 11 — Close -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="slide center" id="s11">
+  <div class="label">Thank You</div>
+  <h1 class="mega gradient-text">Nexus</h1>
+  <p class="mid mt-sm" style="color:var(--text-dim); font-weight:400;">Bring Your Own AI to Every Website.</p>
+  <div class="flex-col gap-sm mt-lg center" style="align-items:center;">
+    <p class="built-by"><strong>Aaron Grace</strong> &mdash; BostonAi.io</p>
+    <div class="flex-row gap-md mt-md" style="justify-content:center;">
+      <a href="https://github.com/AaronGrace978/Hack-Nation-2026-Mozilla-Challenge" target="_blank"
+         style="color:var(--accent2); text-decoration:none; font-weight:600; font-size:18px;">
+        &#x1F517; GitHub Repo
+      </a>
+    </div>
+  </div>
+  <span class="slide-num">11 / 11</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- Script -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsContainer = document.getElementById('navDots');
+
+  // Create nav dots
+  slides.forEach((s, i) => {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot';
+    dot.dataset.index = i;
+    dot.title = `Slide ${i + 1}`;
+    dot.onclick = () => s.scrollIntoView({ behavior: 'smooth' });
+    dotsContainer.appendChild(dot);
+  });
+
+  // Update active dot on scroll
+  const dots = document.querySelectorAll('.nav-dot');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const idx = Array.from(slides).indexOf(e.target);
+        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      }
+    });
+  }, { threshold: 0.5 });
+
+  slides.forEach(s => observer.observe(s));
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    const current = Array.from(slides).findIndex(s => {
+      const r = s.getBoundingClientRect();
+      return r.top >= -100 && r.top < window.innerHeight / 2;
+    });
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight') && current < slides.length - 1) {
+      e.preventDefault();
+      slides[current + 1].scrollIntoView({ behavior: 'smooth' });
+    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && current > 0) {
+      e.preventDefault();
+      slides[current - 1].scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+</script>
+
+</body>
+</html>

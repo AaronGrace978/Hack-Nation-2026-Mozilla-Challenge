@@ -15,11 +15,15 @@ import { resonanceField } from '../memory/resonance-field';
 
 console.log('[Nexus by BostonAi.io] Background service worker starting...');
 
-// Initialize the message router
+// CRITICAL: Register all Chrome event listeners synchronously in the first
+// turn of the service worker. Chrome MV3 drops events whose listeners are
+// registered inside async callbacks (after await or .then()).
+messageRouter.registerListeners();
+console.log('[Nexus by BostonAi.io] Listeners registered (sync)');
+
+// Async initialization: load settings, configure LLM, connect MCP, etc.
 messageRouter.initialize().then(() => {
   console.log('[Nexus by BostonAi.io] Message router initialized');
-
-  // Start resonance field session
   resonanceField.startSession();
   console.log('[Nexus by BostonAi.io] Resonance field session started');
 }).catch((err) => {

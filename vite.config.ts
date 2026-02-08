@@ -36,8 +36,48 @@ function copyExtensionFiles() {
   };
 }
 
+// ── Content Script Build Plugin ──────────────────────────────────────────────
+// Chrome MV3 content scripts are loaded as classic scripts, NOT ES modules.
+// If Vite creates shared chunks (e.g. for shared/messages.ts used by both
+// background and content), content.js will contain `import` statements that
+// fail silently. This plugin runs a second mini-build that produces content.js
+// as a self-contained IIFE with all dependencies inlined.
+function buildContentScript() {
+  return {
+    name: 'build-content-script',
+    apply: 'build' as const,
+    async closeBundle() {
+      const { build } = await import('vite');
+      await build({
+        configFile: false,
+        logLevel: 'warn',
+        plugins: [],
+        resolve: {
+          alias: { '@': resolve(__dirname, 'src') },
+        },
+        build: {
+          write: true,
+          outDir: resolve(__dirname, 'dist'),
+          emptyOutDir: false,    // Don't clear the main build output
+          copyPublicDir: false,
+          rollupOptions: {
+            input: resolve(__dirname, 'src/content/index.ts'),
+            output: {
+              format: 'iife',
+              entryFileNames: 'content.js',
+              inlineDynamicImports: true,
+            },
+          },
+          // Suppress the "Generated an empty chunk" warning
+          chunkSizeWarningLimit: 1000,
+        },
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), copyExtensionFiles()],
+  plugins: [react(), copyExtensionFiles(), buildContentScript()],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
@@ -51,12 +91,11 @@ export default defineConfig({
       input: {
         sidebar: resolve(__dirname, 'sidebar.html'),
         background: resolve(__dirname, 'src/background/index.ts'),
-        content: resolve(__dirname, 'src/content/index.ts'),
+        // content is built separately by buildContentScript() as IIFE
       },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'background') return 'background.js';
-          if (chunkInfo.name === 'content') return 'content.js';
           return 'assets/[name]-[hash].js';
         },
         chunkFileNames: 'assets/[name]-[hash].js',

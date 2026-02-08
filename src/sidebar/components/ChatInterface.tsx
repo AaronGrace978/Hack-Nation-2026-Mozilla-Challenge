@@ -79,7 +79,7 @@ const AGENT_ICONS: Record<string, React.ReactNode> = {
 // ─── Chat Interface Component ─────────────────────────────────────────────────
 
 export function ChatInterface() {
-  const { messages, isProcessing, sendMessage } = useChat();
+  const { messages, isProcessing, sendMessage, isConnected } = useChat();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -114,6 +114,13 @@ export function ChatInterface() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Connection Status Banner */}
+      {!isConnected && (
+        <div className="px-3 py-1.5 bg-amber-900/30 border-b border-amber-700/40 flex items-center justify-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span className="text-[11px] text-amber-300">Reconnecting to Nexus...</span>
+        </div>
+      )}
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
         {messages.length === 0 && (() => {
