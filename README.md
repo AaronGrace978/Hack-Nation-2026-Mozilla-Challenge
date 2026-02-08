@@ -1,6 +1,7 @@
 # Nexus by BostonAi.io — The Universal Web Agent
 
-![Nexus Project Cover](assets/nexus-cover.png)
+<img width="2752" height="1536" alt="Generated_image" src="https://github.com/user-attachments/assets/4b515139-3fde-468e-9030-ee9d9a04901f" />
+
 
 **Bring Your Own AI to Every Website.**
 
@@ -162,3 +163,4 @@ src/
 ## License
 
 MIT
+
