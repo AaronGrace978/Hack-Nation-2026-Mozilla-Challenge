@@ -85,6 +85,7 @@ class MessageRouter {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) throw new Error('No active tab found');
 
+      const activeTabId = tab.id; // capture for closures (TS narrowing)
       const message = createMessage(msg.type as ExtMessageType, msg.payload);
 
       const send = (tabId: number) =>
@@ -92,15 +93,15 @@ class MessageRouter {
 
       const injectAndRetry = async (delayMs: number): Promise<unknown> => {
         await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
+          target: { tabId: activeTabId },
           files: ['content.js'],
         });
         await new Promise((r) => setTimeout(r, delayMs));
-        return send(tab.id);
+        return send(activeTabId);
       };
 
       try {
-        return await send(tab.id);
+        return await send(activeTabId);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         const isNoReceiver =
@@ -116,7 +117,7 @@ class MessageRouter {
             /Could not establish connection|Receiving end does not exist/i.test(retryMsg);
           if (stillNoReceiver) {
             await new Promise((r) => setTimeout(r, 800));
-            return await send(tab.id);
+            return await send(activeTabId);
           }
           throw retryErr;
         }

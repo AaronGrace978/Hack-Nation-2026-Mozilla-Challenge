@@ -154,6 +154,33 @@ function dedup(elements: Element[]): Element[] {
 }
 
 export function findAndClickAddToCart(): InteractionResult {
+  // ── Phase 0: Detect CAPTCHA / bot-wall pages ────────────────────────────
+  // Retailers like Walmart show a "Robot or human?" challenge page.
+  // Detect this early so the user gets a clear message instead of
+  // "No Add to Cart button found".
+  const bodyText = (document.body?.innerText ?? '').substring(0, 2000).toLowerCase();
+  const titleText = (document.title ?? '').toLowerCase();
+  const captchaSignals = [
+    /robot or human/i,
+    /are you a human/i,
+    /verify you('re| are) human/i,
+    /captcha/i,
+    /press and hold/i,
+    /confirm.{0,20}human/i,
+    /blocked.{0,20}bot/i,
+    /access.{0,20}denied/i,
+    /unusual traffic/i,
+  ];
+  const isCaptcha = captchaSignals.some((p) => p.test(bodyText) || p.test(titleText));
+  if (isCaptcha) {
+    return {
+      success: false,
+      action: 'add_to_cart',
+      target: 'CAPTCHA',
+      error: 'This page is showing a CAPTCHA / bot verification challenge. Please solve it manually, then try again.',
+    };
+  }
+
   const candidates: Element[] = [];
 
   // ── Phase 1: Data-attribute / class selectors (most reliable, site-specific) ──
